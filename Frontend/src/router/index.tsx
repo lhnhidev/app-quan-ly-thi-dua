@@ -1,8 +1,7 @@
-import { Suspense, lazy, type JSX } from "react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Suspense, lazy } from "react";
 import { useRoutes, type RouteObject } from "react-router-dom";
 import { Spin } from "antd";
-
-const LoginPage = lazy(() => import("../pages/LoginPage"));
 
 const Loading = () => (
   <div className="flex h-screen w-full items-center justify-center">
@@ -10,20 +9,100 @@ const Loading = () => (
   </div>
 );
 
-const Loadable = ({
-  Component,
-}: {
-  Component: React.ComponentType;
-}): JSX.Element => (
-  <Suspense fallback={<Loading />}>
-    <Component />
-  </Suspense>
-);
+const Loadable = (props: {
+  Component: React.ComponentType<any>;
+  [key: string]: any;
+}) => {
+  const { Component, ...rest } = props;
+  return (
+    <Suspense fallback={<Loading />}>
+      <Component {...rest} />
+    </Suspense>
+  );
+};
 
 const routeConfig: RouteObject[] = [
   {
     path: "/",
-    element: <Loadable Component={LoginPage} />,
+    element: <Loadable Component={lazy(() => import("../pages/LoginPage"))} />,
+  },
+  {
+    path: "/dashboard",
+    element: (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={
+          <Loadable Component={lazy(() => import("../pages/DashboardPage"))} />
+        }
+      />
+    ),
+  },
+  {
+    path: "/student",
+    element: (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={
+          <Loadable
+            Component={lazy(() => import("../pages/ManageStudentPage"))}
+          />
+        }
+      />
+    ),
+  },
+  {
+    path: "/user",
+    element: (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={
+          <Loadable Component={lazy(() => import("../pages/ManageUserPage"))} />
+        }
+      />
+    ),
+  },
+  {
+    path: "/class",
+    element: (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={
+          <Loadable
+            Component={lazy(() => import("../pages/ManageClassPage"))}
+          />
+        }
+      />
+    ),
+  },
+  {
+    path: "/record-form",
+    element: (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={
+          <Loadable
+            Component={lazy(() => import("../pages/ManageRecordFormPage"))}
+          />
+        }
+      />
+    ),
+  },
+  {
+    path: "/role",
+    element: (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={
+          <Loadable Component={lazy(() => import("../pages/ManageRolePage"))} />
+        }
+      />
+    ),
+  },
+  {
+    path: "*",
+    element: (
+      <Loadable Component={lazy(() => import("../pages/NotFoundPage"))} />
+    ),
   },
 ];
 

@@ -1,12 +1,14 @@
 import React from "react";
 import { Form, Input, Button, Card, Typography, message } from "antd";
 import useFetch from "../hooks/useFetch";
+import { useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
 
 const LoginPage: React.FC = () => {
   const { request } = useFetch();
   const [messageApi, contextHolder] = message.useMessage();
+  const navigate = useNavigate();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onFinish = async (values: any) => {
@@ -24,6 +26,9 @@ const LoginPage: React.FC = () => {
     if (data) {
       localStorage.setItem("userInfo", JSON.stringify(data));
       messageApi.success("Đăng nhập thành công!");
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
     } else {
       messageApi.error(
         "Đăng nhập thất bại. Vui lòng kiểm tra lại Email và Mật khẩu!",
