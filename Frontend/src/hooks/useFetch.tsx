@@ -1,0 +1,42 @@
+import { useState, useCallback } from "react";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const useFetch = <T = any,>() => {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const request = useCallback(async (url: string, options?: RequestInit) => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+
+    try {
+      const response = await fetch(url, options);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Lỗi HTTP: ${response.status}`);
+      }
+
+      if (response.status === 204) {
+        setData(null);
+        return null;
+      }
+
+      const result: T = await response.json();
+      setData(result);
+      return result;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      setError(err.message || "Lỗi kết nối hoặc xử lý dữ liệu.");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { data, loading, error, request };
+};
+
+export default useFetch;

@@ -1,17 +1,40 @@
 import React from "react";
-import { Form, Input, Button, Card, Typography } from "antd";
+import { Form, Input, Button, Card, Typography, message } from "antd";
+import useFetch from "../hooks/useFetch";
 
 const { Title, Text } = Typography;
 
 const LoginPage: React.FC = () => {
+  const { request } = useFetch();
+  const [messageApi, contextHolder] = message.useMessage();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onFinish = (values: any) => {
+  const onFinish = async (values: any) => {
     console.log("Dữ liệu form:", values);
+
+    const data = await request(
+      `${import.meta.env.VITE_SERVER_URL}/user/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      },
+    );
+
+    if (data) {
+      localStorage.setItem("userInfo", JSON.stringify(data));
+      messageApi.success("Đăng nhập thành công!");
+    } else {
+      messageApi.error(
+        "Đăng nhập thất bại. Vui lòng kiểm tra lại Email và Mật khẩu!",
+      );
+    }
   };
 
   return (
     // Toàn bộ màn hình, nền gradient
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] p-5">
+      {contextHolder}
       <h2 className="mb-5 text-3xl uppercase text-white">Quản lý Thi đua</h2>
 
       <Card className="w-full max-w-md rounded-lg shadow-xl">
@@ -36,7 +59,7 @@ const LoginPage: React.FC = () => {
               { required: true, message: "Vui lòng nhập Email!" },
               { type: "email", message: "Email không hợp lệ!" },
             ]}
-            className="mb-6" // Khoảng cách dưới
+            className="mb-6"
           >
             <Input placeholder="Nhập email..." />
           </Form.Item>
