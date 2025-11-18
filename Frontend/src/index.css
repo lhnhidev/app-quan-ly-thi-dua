@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #1f5ca9;
+  --secondary-color: #00afef;
+  --bg-color: #f6f6f6;
+  --text-color: #282d33;
+  --border-color: #dddddd;
+}
+
+@font-face {
+  font-family: "Netflix Sans";
+  src:
+    local("NetflixSans-Regular"),
+    url("/fonts/NetflixSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Netflix Sans";
+  font-weight: bold;
+  src:
+    local("NetflixSans-Bold"),
+    url("/fonts/NetflixSans-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Netflix Sans";
+  font-weight: 600;
+  src:
+    local("NetflixSans-Medium"),
+    url("/fonts/NetflixSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Netflix Sans";
+  font-weight: 300;
+  src:
+    local("NetflixSans-Light"),
+    url("/fonts/NetflixSans-Light.woff2") format("woff2");
+}
+
+body {
+  font-family: "Netflix Sans";
+  /* font-size: var(--font-size); */
+  color: var(--text-color);
+}
+
+/* ===== Scrollbar kiểu Obsidian ===== */
+
+/* Toàn bộ trang hoặc vùng cuộn */
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(150, 150, 150, 0.4) transparent; /* Firefox */
+}
+
+/* Chrome, Edge, Safari */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background-color: transparent;
+}
+
+/* Nền track (phần rãnh) */
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Thanh kéo (thumb) */
+::-webkit-scrollbar-thumb {
+  background-color: rgba(150, 150, 150, 0.4);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.3s ease;
+}
+
+/* Hover */
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(150, 150, 150, 0.7);
+}
+
+/* Khi đang kéo */
+::-webkit-scrollbar-thumb:active {
+  background-color: rgba(120, 120, 120, 1);
+}
+
+/* Tùy chọn: làm gọn scrollbar ngang */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
