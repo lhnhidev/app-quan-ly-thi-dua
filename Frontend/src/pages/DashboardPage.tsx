@@ -1,18 +1,24 @@
-import { useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { FaHome } from "react-icons/fa";
+import Header from "../components/Header";
+import TableClass from "../components/Table/TableClass";
+import TableUser from "../components/Table/TableUser";
+import ClassCompetitionChart from "../components/ClassCompetitionChart";
 
 const DashboardPage = () => {
-  const navigate = useNavigate();
+  return (
+    <div>
+      <Header
+        title="Trang chủ"
+        subtitle="Chào mừng bạn đến với trang quản trị"
+        logo={FaHome}
+      ></Header>
 
-  useEffect(() => {
-    const userInfo = localStorage.getItem("userInfo");
-    if (!userInfo) {
-      navigate("/notfound-404");
-      return;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return <div>DashboardPage</div>;
+      <div className="space-y-10 p-5">
+        <TableClass></TableClass>
+        <TableUser></TableUser>
+        <ClassCompetitionChart></ClassCompetitionChart>
+      </div>
+    </div>
+  );
 };
 export default DashboardPage;

@@ -4,9 +4,12 @@ import { useRoutes, type RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import ProtectedRoute from "../components/ProtectedRoute";
 
-const Loading = () => (
-  <div className="flex h-screen w-full items-center justify-center">
-    <Spin size="large" tip="Loading..." />
+export const Loading = ({ style }: { style?: React.CSSProperties }) => (
+  <div
+    className="flex h-screen w-full items-center justify-center"
+    style={style}
+  >
+    <Spin size="large" tip="Đang tải..." />
   </div>
 );
 

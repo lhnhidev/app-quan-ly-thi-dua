@@ -5,16 +5,33 @@ import {
   FolderOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom"; // 1. Import useLocation
 
 const SidebarContent = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // 2. Lấy thông tin URL hiện tại
+
+  // 3. Hàm xác định key nào sẽ active dựa trên đường dẫn
+  const getSelectedKey = () => {
+    const path = location.pathname;
+
+    // Kiểm tra xem đường dẫn bắt đầu bằng gì để active mục tương ứng
+    if (path.startsWith("/user")) return "2";
+    if (path.startsWith("/class")) return "3";
+    if (path.startsWith("/student")) return "4";
+    if (path.startsWith("/record-form")) return "5";
+    if (path.startsWith("/role")) return "6";
+
+    // Mặc định là dashboard (key "1") cho trang chủ hoặc /dashboard
+    return "1";
+  };
 
   return (
     <Menu
       theme="light"
       mode="inline"
-      defaultSelectedKeys={["1"]}
+      // 4. Dùng selectedKeys thay vì defaultSelectedKeys
+      selectedKeys={[getSelectedKey()]}
       className="border-r-0"
       items={[
         {
@@ -22,54 +39,42 @@ const SidebarContent = () => {
           icon: <HomeOutlined />,
           label: "Màn hình chính",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => {
-            navigate("/dashboard");
-          },
+          onClick: () => navigate("/dashboard"),
         },
         {
           key: "2",
           icon: <CalendarOutlined />,
           label: "Quản lý người dùng",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => {
-            navigate("/user");
-          },
+          onClick: () => navigate("/user"),
         },
         {
           key: "3",
           icon: <FolderOutlined />,
           label: "Quản lý lớp học",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => {
-            navigate("/class");
-          },
+          onClick: () => navigate("/class"),
         },
         {
           key: "4",
           icon: <FolderOutlined />,
           label: "Quản lý học sinh",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => {
-            navigate("/student");
-          },
+          onClick: () => navigate("/student"),
         },
         {
           key: "5",
           icon: <FolderOutlined />,
           label: "Quản lý phiếu thi đua",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => {
-            navigate("/record-form");
-          },
+          onClick: () => navigate("/record-form"),
         },
         {
           key: "6",
           icon: <FolderOutlined />,
           label: "Quản lý thang điểm",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => {
-            navigate("/role");
-          },
+          onClick: () => navigate("/role"),
         },
         {
           key: "7",

@@ -17,12 +17,14 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
         setCollapsed(true);
       }
     };
     window.addEventListener("resize", handleResize);
+    handleResize(); // Call on initial mount
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
@@ -55,10 +57,10 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
         collapsed={collapsed}
         onCollapse={(value) => setCollapsed(value)}
         trigger={null}
-        className="fixed z-20 h-screen border-r border-gray-200 bg-white shadow-md lg:static"
-        style={
-          isMobile ? { position: "fixed", left: collapsed ? -280 : 0 } : {}
-        }
+        className="!fixed z-20 h-screen border-r border-gray-200 !bg-white shadow-md"
+        style={{
+          left: isMobile && collapsed ? -280 : 0,
+        }}
       >
         <div className="flex h-[64px] items-center border-b border-gray-200 p-4">
           {isMobile && (
@@ -85,23 +87,20 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
         />
       )}
 
-      <Layout>
+      <Layout
+        style={{
+          marginLeft: isMobile ? 0 : collapsed ? 70 : 280,
+          transition: "margin-left 0.2s",
+        }}
+      >
         <Header className="sticky top-0 z-10 flex h-[64px] items-center justify-between border-b border-gray-200 bg-white p-0 shadow-sm">
           <div className="flex items-center">
             <Button
               type="text"
               icon={<MenuOutlined />}
               onClick={() => setCollapsed(!collapsed)}
-              className="ml-4 hidden text-gray-600 lg:inline-flex"
+              className="ml-4 text-gray-600"
             />
-            {isMobile && (
-              <Button
-                type="text"
-                icon={<MenuOutlined />}
-                onClick={() => setCollapsed(!collapsed)}
-                className="ml-4 inline-flex text-gray-600 lg:hidden"
-              />
-            )}
             {collapsed && !isMobile && (
               <Title level={4} className="!mb-0 ml-4 text-gray-700">
                 QUẢN LÝ THI ĐUA

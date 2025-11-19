@@ -8,8 +8,8 @@ router.post('/login', loginUser);
 
 router.use(protect);
 
-router.get('/test', index);
 router.get('/', getUsers);
+router.get('/test', index);
 router.post('/createNewUser', createUser);
 
 export default router;

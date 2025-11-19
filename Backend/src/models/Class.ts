@@ -5,6 +5,7 @@ export type ClassType = {
   students: mongoose.Types.ObjectId[];
   point: number;
   idClass: string;
+  teacher: mongoose.Types.ObjectId;
 };
 
 const classSchema = new Schema<ClassType>(
@@ -30,12 +31,16 @@ const classSchema = new Schema<ClassType>(
       unique: true,
       trim: true,
     },
+    teacher: {
+      type: Schema.Types.ObjectId,
+      ref: 'Teacher',
+    },
   },
   {
     timestamps: true,
   }
 );
 
-const Class = mongoose.model<ClassType>('Class', classSchema);
+const Class = mongoose.model<ClassType>('Class', classSchema, 'Class');
 
 export default Class;
