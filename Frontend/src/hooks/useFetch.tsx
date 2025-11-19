@@ -14,6 +14,18 @@ const useFetch = <T = any,>() => {
     try {
       const response = await fetch(url, options);
 
+      if (response.status === 404) {
+        localStorage.removeItem("userInfo");
+        window.location.replace("/notfound-404");
+        return null;
+      }
+
+      if (response.status === 401) {
+        localStorage.removeItem("userInfo");
+        window.location.replace("/login");
+        return null;
+      }
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Lỗi HTTP: ${response.status}`);

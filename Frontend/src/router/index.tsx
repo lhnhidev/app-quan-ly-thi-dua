@@ -2,6 +2,7 @@
 import { Suspense, lazy } from "react";
 import { useRoutes, type RouteObject } from "react-router-dom";
 import { Spin } from "antd";
+import ProtectedRoute from "../components/ProtectedRoute";
 
 const Loading = () => (
   <div className="flex h-screen w-full items-center justify-center">
@@ -27,76 +28,87 @@ const routeConfig: RouteObject[] = [
     element: <Loadable Component={lazy(() => import("../pages/LoginPage"))} />,
   },
   {
-    path: "/dashboard",
-    element: (
-      <Loadable
-        Component={lazy(() => import("../layouts/DefaultLayout"))}
-        children={
-          <Loadable Component={lazy(() => import("../pages/DashboardPage"))} />
-        }
-      />
-    ),
-  },
-  {
-    path: "/student",
-    element: (
-      <Loadable
-        Component={lazy(() => import("../layouts/DefaultLayout"))}
-        children={
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "/dashboard",
+        element: (
           <Loadable
-            Component={lazy(() => import("../pages/ManageStudentPage"))}
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/DashboardPage"))}
+              />
+            }
           />
-        }
-      />
-    ),
-  },
-  {
-    path: "/user",
-    element: (
-      <Loadable
-        Component={lazy(() => import("../layouts/DefaultLayout"))}
-        children={
-          <Loadable Component={lazy(() => import("../pages/ManageUserPage"))} />
-        }
-      />
-    ),
-  },
-  {
-    path: "/class",
-    element: (
-      <Loadable
-        Component={lazy(() => import("../layouts/DefaultLayout"))}
-        children={
+        ),
+      },
+      {
+        path: "/student",
+        element: (
           <Loadable
-            Component={lazy(() => import("../pages/ManageClassPage"))}
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageStudentPage"))}
+              />
+            }
           />
-        }
-      />
-    ),
-  },
-  {
-    path: "/record-form",
-    element: (
-      <Loadable
-        Component={lazy(() => import("../layouts/DefaultLayout"))}
-        children={
+        ),
+      },
+      {
+        path: "/user",
+        element: (
           <Loadable
-            Component={lazy(() => import("../pages/ManageRecordFormPage"))}
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageUserPage"))}
+              />
+            }
           />
-        }
-      />
-    ),
-  },
-  {
-    path: "/role",
-    element: (
-      <Loadable
-        Component={lazy(() => import("../layouts/DefaultLayout"))}
-        children={
-          <Loadable Component={lazy(() => import("../pages/ManageRolePage"))} />
-        }
-      />
-    ),
+        ),
+      },
+      {
+        path: "/class",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageClassPage"))}
+              />
+            }
+          />
+        ),
+      },
+      {
+        path: "/record-form",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageRecordFormPage"))}
+              />
+            }
+          />
+        ),
+      },
+      {
+        path: "/role",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageRolePage"))}
+              />
+            }
+          />
+        ),
+      },
+    ],
   },
   {
     path: "*",

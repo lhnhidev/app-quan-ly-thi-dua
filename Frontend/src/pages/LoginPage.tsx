@@ -26,9 +26,7 @@ const LoginPage: React.FC = () => {
     if (data) {
       localStorage.setItem("userInfo", JSON.stringify(data));
       messageApi.success("Đăng nhập thành công!");
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1000);
+      navigate("/dashboard");
     } else {
       messageApi.error(
         "Đăng nhập thất bại. Vui lòng kiểm tra lại Email và Mật khẩu!",
