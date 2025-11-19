@@ -1,57 +1,77 @@
 import React, { useState, useEffect } from "react";
-import { Table, Input, Button, Tag, Space, Tooltip, Modal } from "antd";
+import { Table, Input, Button, Space, Tooltip, Modal, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiSearch, FiEdit, FiTrash2, FiUserPlus } from "react-icons/fi";
 import useFetch from "../../hooks/useFetch";
 import { Loading } from "../../router";
 
-interface User {
+interface Teacher {
   _id: string;
-  idUser: string;
+  idTeacher: string;
   firstName: string;
   lastName: string;
   email: string;
-  role: "admin" | "user";
 }
 
-const ManageUserPage: React.FC = () => {
-  const { loading, error, request } = useFetch<User[]>();
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+interface ClassInfo {
+  _id: string;
+  name: string;
+  idClass: string;
+  point: number;
+  students: string[];
+  teacher: Teacher;
+}
+
+interface Student {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  idStudent: string;
+  class: ClassInfo;
+}
+
+const TableStudent: React.FC = () => {
+  const { loading, error, request } = useFetch<Student[]>();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
-    const userInfoString = localStorage.getItem("userInfo");
-    const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
-    const token = userInfo?.token;
+    const fetchStudents = async () => {
+      const userInfoString = localStorage.getItem("userInfo");
+      const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+      const token = userInfo?.token;
 
-    const fetchUsers = async () => {
-      const result = await request(`${import.meta.env.VITE_SERVER_URL}/user`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const result = await request(
+        `${import.meta.env.VITE_SERVER_URL}/student`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
+
       if (result) {
-        setUsers(result);
-        setFilteredUsers(result);
+        setStudents(result);
+        setFilteredStudents(result);
       }
     };
-    fetchUsers();
+    fetchStudents();
   }, [request]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase();
     setSearchText(value);
 
-    const filtered = users.filter((user) =>
-      user.idUser.toLowerCase().includes(value),
+    const filtered = students.filter((s) =>
+      s.idStudent.toLowerCase().includes(value),
     );
-    setFilteredUsers(filtered);
+    setFilteredStudents(filtered);
   };
 
-  const columns: ColumnsType<User> = [
+  const columns: ColumnsType<Student> = [
     {
       title: "#",
       key: "index",
@@ -61,10 +81,10 @@ const ManageUserPage: React.FC = () => {
       ),
     },
     {
-      title: "Mã người dùng",
-      dataIndex: "idUser",
-      key: "idUser",
-      width: 150,
+      title: "Mã học sinh",
+      dataIndex: "idStudent",
+      key: "idStudent",
+      width: 120,
       render: (text) => (
         <span className="rounded border border-gray-200 bg-gray-100 px-2 py-1 font-mono font-semibold text-gray-700">
           {text}
@@ -76,46 +96,43 @@ const ManageUserPage: React.FC = () => {
       key: "fullName",
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-blue-200 bg-gradient-to-br from-blue-100 to-blue-200 font-bold text-blue-600 shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-indigo-200 bg-gradient-to-br from-indigo-100 to-indigo-200 font-bold text-indigo-600 shadow-sm">
             {record.lastName.charAt(0)}
           </div>
           <span className="font-medium text-gray-700">
-            {record.lastName} {record.firstName}
+            {record.firstName} {record.lastName}
           </span>
         </div>
       ),
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
-      render: (text) => <span className="text-gray-500">{text}</span>,
+      title: "Lớp",
+      dataIndex: ["class", "name"],
+      key: "class",
+      width: 100,
+      sorter: (a, b) => a.class.name.localeCompare(b.class.name),
+      render: (text) => (
+        <Tag color="cyan" className="rounded px-2 font-medium">
+          {text}
+        </Tag>
+      ),
     },
     {
-      title: "Vai trò",
-      dataIndex: "role",
-      key: "role",
-      width: 150,
-      sorter: (a, b) => a.role.localeCompare(b.role),
-      render: (role: string) => {
-        let color = "blue";
-        let label = "Người dùng";
-
-        if (role === "admin") {
-          color = "volcano";
-          label = "Quản trị viên";
-        } else {
-          color = "green";
-          label = "Người dùng";
-        }
+      title: "Chủ nhiệm",
+      key: "teacher",
+      width: 200,
+      render: (_, record) => {
+        const teacher = record.class?.teacher;
+        if (!teacher)
+          return <span className="italic text-gray-400">Chưa phân công</span>;
 
         return (
-          <Tag
-            color={color}
-            className="rounded-full border-0 px-3 py-0.5 font-medium shadow-sm"
-          >
-            {label.toUpperCase()}
-          </Tag>
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-700">
+              {teacher.lastName} {teacher.firstName}
+            </span>
+            <span className="text-xs text-gray-500">{teacher.email}</span>
+          </div>
         );
       },
     },
@@ -142,13 +159,13 @@ const ManageUserPage: React.FC = () => {
               onClick={() => {
                 Modal.confirm({
                   title: "Xác nhận xóa",
-                  content: `Bạn có chắc muốn xóa người dùng ${record.lastName} ${record.firstName}?`,
+                  content: `Bạn có chắc muốn xóa học sinh ${record.firstName} ${record.lastName}?`,
                   okText: "Xóa",
                   okType: "danger",
                   cancelText: "Hủy",
                   onOk() {
-                    console.log("Đã xóa:", record._id);
-                    // Gọi API xóa tại đây...
+                    console.log("Đã xóa học sinh ID:", record._id);
+                    // Gọi API xóa student tại đây...
                   },
                 });
               }}
@@ -168,21 +185,16 @@ const ManageUserPage: React.FC = () => {
       <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="m-0 text-2xl font-bold text-[var(--text-color)]">
-            Danh sách người dùng
+            Danh sách học sinh
           </h1>
           <p className="mt-1 text-gray-500">
-            Quản lý tài khoản và phân quyền hệ thống
+            Quản lý thông tin hồ sơ học sinh toàn trường
           </p>
         </div>
 
-        <div
-          className={`${
-            location.pathname === "/dashboard" ? "hidden" : "flex"
-          } w-full items-center gap-3 md:w-auto`}
-        >
-          {/* Ô tìm kiếm */}
+        <div className="flex w-full items-center gap-3 md:w-auto">
           <Input
-            placeholder="Tìm theo Mã người dùng..."
+            placeholder="Tìm theo Mã học sinh..."
             prefix={<FiSearch className="text-gray-400" />}
             value={searchText}
             onChange={handleSearch}
@@ -190,8 +202,6 @@ const ManageUserPage: React.FC = () => {
             className="w-full rounded-lg border-gray-300 hover:border-[var(--primary-color)] focus:border-[var(--primary-color)] md:w-64"
             size="large"
           />
-
-          {/* Nút thêm mới */}
           <Button
             type="primary"
             icon={<FiUserPlus className="mr-1" />}
@@ -207,18 +217,18 @@ const ManageUserPage: React.FC = () => {
       <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white shadow-sm">
         <Table
           columns={columns}
-          dataSource={filteredUsers}
+          dataSource={filteredStudents}
           rowKey="_id"
           pagination={{
             pageSize: 10,
             showTotal: (total, range) => (
               <span className="text-sm text-gray-500">
-                Hiển thị {range[0]}-{range[1]} trên tổng số {total} người dùng
+                Hiển thị {range[0]}-{range[1]} trên tổng số {total} học sinh
               </span>
             ),
             className: "p-4",
           }}
-          scroll={{ x: 768 }}
+          scroll={{ x: 900 }}
           components={{
             header: {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -236,4 +246,4 @@ const ManageUserPage: React.FC = () => {
   );
 };
 
-export default ManageUserPage;
+export default TableStudent;

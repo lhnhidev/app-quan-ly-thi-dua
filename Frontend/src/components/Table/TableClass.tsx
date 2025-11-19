@@ -172,7 +172,12 @@ const ManageClassPage: React.FC = () => {
           type="primary"
           icon={<PlusOutlined />}
           size="large"
-          style={{ backgroundColor: "var(--primary-color)", display: "none" }}
+          style={{
+            backgroundColor: "var(--primary-color)",
+            display: window.location.pathname.includes("/dashboard")
+              ? "none"
+              : "",
+          }}
         >
           Thêm lớp mới
         </Button>
