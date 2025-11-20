@@ -105,7 +105,7 @@ const routeConfig: RouteObject[] = [
             Component={lazy(() => import("../layouts/DefaultLayout"))}
             children={
               <Loadable
-                Component={lazy(() => import("../pages/ManageRolePage"))}
+                Component={lazy(() => import("../pages/ManageRulePage"))}
               />
             }
           />
