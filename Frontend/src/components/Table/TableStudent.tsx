@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Table, Input, Button, Space, Tooltip, Modal, Tag } from "antd";
+import { Table, Input, Button, Space, Tooltip, Tag, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiSearch, FiEdit, FiTrash2, FiUserPlus } from "react-icons/fi";
 import useFetch from "../../hooks/useFetch";
 import { Loading } from "../../router";
+import { useAppContext } from "../../context";
 
 interface Teacher {
   _id: string;
@@ -35,6 +36,51 @@ const TableStudent: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const {
+    setOpenAddStudentForm,
+    reRenderTableStudent,
+    setReRenderTableStudent,
+    setOpenModifyStudentForm,
+    setCurrentStudent,
+    modal,
+  } = useAppContext();
+
+  const handleDelete = (id: string, firstName: string, lastName: string) => {
+    modal.confirm({
+      title: "Xác nhận xóa",
+      content: `Bạn có chắc muốn xóa học sinh ${firstName} ${lastName}?`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk() {
+        const deleteStudent = async () => {
+          const userInfoString = localStorage.getItem("userInfo");
+          const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+          const token = userInfo?.token;
+
+          const result = await request(
+            `${import.meta.env.VITE_SERVER_URL}/student/${id}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          if (result) {
+            setReRenderTableStudent(!reRenderTableStudent);
+            messageApi.success("Xóa học sinh thành công");
+          }
+        };
+
+        deleteStudent();
+      },
+    });
+  };
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -59,7 +105,7 @@ const TableStudent: React.FC = () => {
       }
     };
     fetchStudents();
-  }, [request]);
+  }, [request, reRenderTableStudent]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase();
@@ -148,6 +194,10 @@ const TableStudent: React.FC = () => {
               type="text"
               icon={<FiEdit size={18} />}
               className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              onClick={() => {
+                setCurrentStudent(record);
+                setOpenModifyStudentForm(true);
+              }}
             />
           </Tooltip>
           <Tooltip title="Xóa">
@@ -157,17 +207,7 @@ const TableStudent: React.FC = () => {
               icon={<FiTrash2 size={18} />}
               className="hover:bg-red-50"
               onClick={() => {
-                Modal.confirm({
-                  title: "Xác nhận xóa",
-                  content: `Bạn có chắc muốn xóa học sinh ${record.firstName} ${record.lastName}?`,
-                  okText: "Xóa",
-                  okType: "danger",
-                  cancelText: "Hủy",
-                  onOk() {
-                    console.log("Đã xóa học sinh ID:", record._id);
-                    // Gọi API xóa student tại đây...
-                  },
-                });
+                handleDelete(record?._id, record?.firstName, record?.lastName);
               }}
             />
           </Tooltip>
@@ -182,6 +222,7 @@ const TableStudent: React.FC = () => {
 
   return (
     <div>
+      {contextHolder}
       <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="m-0 text-2xl font-bold text-[var(--text-color)]">
@@ -208,6 +249,7 @@ const TableStudent: React.FC = () => {
             size="large"
             className="flex items-center shadow-md shadow-blue-200"
             style={{ backgroundColor: "var(--primary-color)" }}
+            onClick={() => setOpenAddStudentForm(true)}
           >
             Thêm mới
           </Button>

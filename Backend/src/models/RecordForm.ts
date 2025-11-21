@@ -37,7 +37,7 @@ const recordFormSchema = new Schema<RecordFormType>(
     },
     rule: {
       type: Schema.Types.ObjectId,
-      ref: 'Rule',
+      ref: 'Role',
       required: true,
     },
   },

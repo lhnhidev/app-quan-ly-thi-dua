@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import RecordForm from '../models/RecordForm';
 import '../models/Student';
 import '../models/Class';
-import '../models/Rule';
+import '../models/Role';
 import '../models/User';
 
 export const getRecordForms = async (req: Request, res: Response) => {

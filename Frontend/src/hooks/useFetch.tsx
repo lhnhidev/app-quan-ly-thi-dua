@@ -28,6 +28,10 @@ const useFetch = <T = any,>() => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (response.status === 409) {
+          setError(errorData.message);
+          return errorData;
+        }
         throw new Error(errorData.message || `Lỗi HTTP: ${response.status}`);
       }
 

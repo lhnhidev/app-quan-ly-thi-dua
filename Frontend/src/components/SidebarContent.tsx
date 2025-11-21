@@ -78,6 +78,13 @@ const SidebarContent = () => {
         },
         {
           key: "7",
+          icon: <FolderOutlined />,
+          label: "Bảng xếp hạng",
+          className: "rounded-r-full my-1.5 h-12 flex items-center",
+          onClick: () => navigate("/ranking"),
+        },
+        {
+          key: "8",
           icon: <SettingOutlined />,
           label: "Cài đặt",
           className: "rounded-r-full my-1.5 h-12 flex items-center",

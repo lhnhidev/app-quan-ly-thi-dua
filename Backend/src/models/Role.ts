@@ -1,13 +1,13 @@
 import { Schema, model } from 'mongoose';
 
-export type RuleType = {
+export type RoleType = {
   idRule: string;
   content: string;
   point: number;
   type: boolean;
 };
 
-const RuleSchema: Schema = new Schema(
+const RoleSchema: Schema = new Schema(
   {
     idRule: {
       type: String,
@@ -32,4 +32,4 @@ const RuleSchema: Schema = new Schema(
   }
 );
 
-export default model<RuleType>('Rule', RuleSchema, 'Rule');
+export default model<RoleType>('Role', RoleSchema, 'Role');

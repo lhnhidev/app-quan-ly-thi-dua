@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import Class from './models/Class';
 import RecordForm from './models/RecordForm';
-import Rule from './models/Rule';
+import Rule from './models/Role';
 import Student from './models/Student';
 import Teacher from './models/Teacher';
 import User from './models/User';
