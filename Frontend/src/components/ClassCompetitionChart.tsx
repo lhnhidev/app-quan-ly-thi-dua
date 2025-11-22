@@ -56,7 +56,9 @@ const ClassCompetitionChart: React.FC = () => {
 
       if (data) {
         // Sắp xếp dữ liệu để hiển thị biểu đồ đẹp hơn
-        const sortedData = data.sort((a, b) => b.point - a.point);
+        const sortedData = data.sort(
+          (a: { point: number }, b: { point: number }) => b.point - a.point,
+        );
         setChartData(sortedData);
       }
     };
