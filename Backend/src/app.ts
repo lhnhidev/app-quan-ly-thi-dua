@@ -4,7 +4,7 @@ import cors from 'cors';
 import connectDB from './config/db';
 import router from './routes';
 
-const allowedOrigins = ['https://app-quan-ly-thi-dua-8ote.vercel.app/'];
+const allowedOrigins = ['https://app-quan-ly-thi-dua.vercel.app'];
 
 dotenv.config();
 
