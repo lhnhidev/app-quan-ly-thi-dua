@@ -4,13 +4,19 @@ import cors from 'cors';
 import connectDB from './config/db';
 import router from './routes';
 
+const allowedOrigins = ['https://app-quan-ly-thi-dua-8ote.vercel.app/'];
+
 dotenv.config();
 
 connectDB();
 
 const app: Application = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: allowedOrigins,
+  })
+);
 app.use(express.json());
 
 router(app);
