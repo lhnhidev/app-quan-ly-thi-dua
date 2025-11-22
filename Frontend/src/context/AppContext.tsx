@@ -56,6 +56,16 @@ export interface AppContextType {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   messageApi: any;
   contextHolderMess: React.ReactNode;
+  openAddRecordForm: boolean;
+  setOpenAddRecordForm: React.Dispatch<React.SetStateAction<boolean>>;
+  reRenderTableRecord: boolean;
+  setReRenderTableRecord: React.Dispatch<React.SetStateAction<boolean>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  currentRecordForm: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setCurrentRecordForm: React.Dispatch<React.SetStateAction<any>>;
+  openModifyRecordForm: boolean;
+  setOpenModifyRecordForm: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

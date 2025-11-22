@@ -51,6 +51,15 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [currentRole, setCurrentRole] = useState<any>(null);
 
+  const [openAddRecordForm, setOpenAddRecordForm] = useState<boolean>(false);
+  const [reRenderTableRecord, setReRenderTableRecord] =
+    useState<boolean>(false);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [currentRecordForm, setCurrentRecordForm] = useState<any>(null);
+  const [openModifyRecordForm, setOpenModifyRecordForm] =
+    useState<boolean>(false);
+
   return (
     <AppContext.Provider
       value={{
@@ -78,6 +87,14 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         setCurrentRole,
         messageApi,
         contextHolderMess,
+        openAddRecordForm,
+        setOpenAddRecordForm,
+        reRenderTableRecord,
+        setReRenderTableRecord,
+        currentRecordForm,
+        setCurrentRecordForm,
+        openModifyRecordForm,
+        setOpenModifyRecordForm,
       }}
     >
       {children}

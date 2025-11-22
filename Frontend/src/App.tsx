@@ -1,5 +1,7 @@
+import AddRecordForm from "./components/Form/AddRecordForm";
 import AddRoleForm from "./components/Form/AddRoleForm";
 import AddStudentsForm from "./components/Form/AddStudentsForm";
+import ModifyRecordForm from "./components/Form/ModifyRecordForm";
 import ModifyRoleForm from "./components/Form/ModifyRoleForm";
 import ModifyStudentForm from "./components/Form/ModifyStudentForm";
 import { useAppContext } from "./context";
@@ -15,6 +17,8 @@ const App = () => {
       <ModifyStudentForm></ModifyStudentForm>
       <AddRoleForm></AddRoleForm>
       <ModifyRoleForm></ModifyRoleForm>
+      <AddRecordForm></AddRecordForm>
+      <ModifyRecordForm></ModifyRecordForm>
       {contextHolder}
       {contextHolderMess}
     </div>

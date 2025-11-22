@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Table, Input, Button, Tag, Space, Tooltip, Modal } from "antd";
+import { Table, Input, Button, Tag, Space, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiSearch, FiEdit, FiTrash2, FiPlus } from "react-icons/fi";
 import useFetch from "../../hooks/useFetch";
 import { Loading } from "../../router";
+import { useAppContext } from "../../context";
+import AddRecordForm from "../Form/AddRecordForm"; // Import form thêm mới
 
 interface User {
   _id: string;
@@ -49,6 +51,18 @@ const TableRecordForm: React.FC = () => {
   const [filteredData, setFilteredData] = useState<RecordForm[]>([]);
   const [searchText, setSearchText] = useState("");
 
+  // Lấy modal, messageApi và các hàm state từ Context
+  const {
+    setOpenAddRecordForm,
+    reRenderTableRecord,
+    setReRenderTableRecord,
+    modal,
+    messageApi,
+    setOpenModifyRecordForm,
+    setCurrentRecordForm,
+  } = useAppContext();
+
+  // --- 1. Fetch Data ---
   useEffect(() => {
     const fetchData = async () => {
       const userInfoString = localStorage.getItem("userInfo");
@@ -73,8 +87,9 @@ const TableRecordForm: React.FC = () => {
     };
 
     fetchData();
-  }, [request]);
+  }, [request, reRenderTableRecord]);
 
+  // --- 2. Search ---
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase();
     setSearchText(value);
@@ -83,6 +98,45 @@ const TableRecordForm: React.FC = () => {
       item.idRecordForm.toLowerCase().includes(value),
     );
     setFilteredData(filtered);
+  };
+
+  // --- 3. Delete Logic ---
+  const handleDelete = (record: RecordForm) => {
+    modal.confirm({
+      title: "Xác nhận xóa",
+      content: `Bạn có chắc chắn muốn xóa phiếu ${record.idRecordForm}?`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      centered: true,
+      onOk: async () => {
+        const userInfoString = localStorage.getItem("userInfo");
+        const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+        const token = userInfo?.token;
+
+        // Gọi API DELETE
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response: any = await request(
+          `${import.meta.env.VITE_SERVER_URL}/record-form/${record._id}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (response) {
+          messageApi.success("Xóa phiếu thi đua thành công!");
+          // Reload bảng
+          if (setReRenderTableRecord)
+            setReRenderTableRecord((prev: boolean) => !prev);
+        } else {
+          messageApi.error("Xóa thất bại!");
+        }
+      },
+    });
   };
 
   const columns: ColumnsType<RecordForm> = [
@@ -141,17 +195,22 @@ const TableRecordForm: React.FC = () => {
     {
       title: "Học sinh",
       key: "student",
-      width: 120,
+      width: 150,
       render: (_, record) => (
-        <span className="font-medium text-gray-700">
-          {record.student?.idStudent || "N/A"}
-        </span>
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-700">
+            {record.student?.lastName} {record.student?.firstName}
+          </span>
+          <span className="text-xs text-gray-400">
+            {record.student?.idStudent || "N/A"}
+          </span>
+        </div>
       ),
     },
     {
       title: "Lớp",
       key: "className",
-      width: 100,
+      width: 80,
       sorter: (a, b) =>
         (a.class?.name || "").localeCompare(b.class?.name || ""),
       render: (_, record) => (
@@ -188,7 +247,7 @@ const TableRecordForm: React.FC = () => {
         return (
           <Tag color={color} className="px-2 py-0.5 text-[13px] font-bold">
             {sign}
-            {points}đ
+            {Math.abs(points)}đ
           </Tag>
         );
       },
@@ -206,6 +265,10 @@ const TableRecordForm: React.FC = () => {
               size="small"
               icon={<FiEdit />}
               className="text-blue-600 hover:bg-blue-50"
+              onClick={() => {
+                setCurrentRecordForm(record);
+                setOpenModifyRecordForm(true);
+              }}
             />
           </Tooltip>
           <Tooltip title="Xóa">
@@ -214,14 +277,7 @@ const TableRecordForm: React.FC = () => {
               size="small"
               danger
               icon={<FiTrash2 />}
-              onClick={() => {
-                Modal.confirm({
-                  title: "Xác nhận xóa",
-                  content: `Bạn có chắc muốn xóa phiếu ${record.idRecordForm}?`,
-                  okType: "danger",
-                  onOk: () => console.log("Deleted", record._id),
-                });
-              }}
+              onClick={() => handleDelete(record)} // Gọi hàm xóa
             />
           </Tooltip>
         </Space>
@@ -261,6 +317,7 @@ const TableRecordForm: React.FC = () => {
             icon={<FiPlus />}
             size="large"
             style={{ backgroundColor: "var(--primary-color)" }}
+            onClick={() => setOpenAddRecordForm(true)}
           >
             Tạo phiếu mới
           </Button>
@@ -296,6 +353,9 @@ const TableRecordForm: React.FC = () => {
           }}
         />
       </div>
+
+      {/* Đặt Component Form ở cuối */}
+      <AddRecordForm />
     </div>
   );
 };
