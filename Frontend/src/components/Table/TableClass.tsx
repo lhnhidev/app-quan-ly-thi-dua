@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import { Card, Avatar, Tag, Button, Tabs } from "antd";
 import {
@@ -49,25 +50,33 @@ const ManageClassPage: React.FC = () => {
       });
 
       if (data) {
-        const mappedData: ClassInfo[] = data.map((item) => {
-          const gradeMatch = item.idClass.match(/\d+/);
-          const grade = gradeMatch ? parseInt(gradeMatch[0]) : 0;
+        const mappedData: ClassInfo[] = data.map(
+          (item: {
+            idClass: string;
+            teacher: { lastName: any; firstName: any };
+            _id: any;
+            name: any;
+            students: string | any[];
+          }) => {
+            const gradeMatch = item.idClass.match(/\d+/);
+            const grade = gradeMatch ? parseInt(gradeMatch[0]) : 0;
 
-          // Xử lý tên giáo viên
-          const teacherName = item.teacher
-            ? `${item.teacher.lastName} ${item.teacher.firstName}`
-            : "Chưa phân công";
+            // Xử lý tên giáo viên
+            const teacherName = item.teacher
+              ? `${item.teacher.lastName} ${item.teacher.firstName}`
+              : "Chưa phân công";
 
-          return {
-            realId: item._id,
-            displayId: item.idClass,
-            name: item.name,
-            grade: grade,
-            teacher: teacherName,
-            studentCount: item.students ? item.students.length : 0,
-            logo: `https://ui-avatars.com/api/?name=${item.idClass}&background=random&color=fff&size=128&font-size=0.4`,
-          };
-        });
+            return {
+              realId: item._id,
+              displayId: item.idClass,
+              name: item.name,
+              grade: grade,
+              teacher: teacherName,
+              studentCount: item.students ? item.students.length : 0,
+              logo: `https://ui-avatars.com/api/?name=${item.idClass}&background=random&color=fff&size=128&font-size=0.4`,
+            };
+          },
+        );
 
         setClasses(mappedData);
       }
