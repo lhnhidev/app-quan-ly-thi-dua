@@ -1,6 +1,8 @@
+import AddClassForm from "./components/Form/AddClassForm";
 import AddRecordForm from "./components/Form/AddRecordForm";
 import AddRoleForm from "./components/Form/AddRoleForm";
 import AddStudentsForm from "./components/Form/AddStudentsForm";
+import AddTeacherForm from "./components/Form/AddTeacherForm";
 import ModifyRecordForm from "./components/Form/ModifyRecordForm";
 import ModifyRoleForm from "./components/Form/ModifyRoleForm";
 import ModifyStudentForm from "./components/Form/ModifyStudentForm";
@@ -19,6 +21,8 @@ const App = () => {
       <ModifyRoleForm></ModifyRoleForm>
       <AddRecordForm></AddRecordForm>
       <ModifyRecordForm></ModifyRecordForm>
+      <AddClassForm></AddClassForm>
+      <AddTeacherForm></AddTeacherForm>
       {contextHolder}
       {contextHolderMess}
     </div>

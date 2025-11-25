@@ -66,6 +66,14 @@ export interface AppContextType {
   setCurrentRecordForm: React.Dispatch<React.SetStateAction<any>>;
   openModifyRecordForm: boolean;
   setOpenModifyRecordForm: React.Dispatch<React.SetStateAction<boolean>>;
+  openAddClassForm: boolean;
+  setOpenAddClassForm: React.Dispatch<React.SetStateAction<boolean>>;
+  reRenderTableClass: boolean;
+  setReRenderTableClass: React.Dispatch<React.SetStateAction<boolean>>;
+  openAddTeacherForm: boolean;
+  setOpenAddTeacherForm: React.Dispatch<React.SetStateAction<boolean>>;
+  reRenderTableTeacher: boolean;
+  setReRenderTableTeacher: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

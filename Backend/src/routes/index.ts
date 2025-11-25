@@ -5,6 +5,7 @@ import classRoutes from './class.routes';
 import roleRoutes from './role.routes';
 import studentRoutes from './student.routes';
 import recordFormRoutes from './recordForm.routes';
+import teacherRoutes from './teacher.routes';
 
 const router = (app: Application): void => {
   app.use('/user', userRoutes);
@@ -13,6 +14,7 @@ const router = (app: Application): void => {
   app.use('/role', roleRoutes);
   app.use('/student', studentRoutes);
   app.use('/record-form', recordFormRoutes);
+  app.use('/teacher', teacherRoutes);
 };
 
 export default router;

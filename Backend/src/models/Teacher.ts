@@ -34,7 +34,7 @@ const teacherSchema: Schema = new Schema(
       lowercase: true,
     },
     idClass: {
-      type: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId || null || undefined,
       ref: 'Class',
       required: false,
     },

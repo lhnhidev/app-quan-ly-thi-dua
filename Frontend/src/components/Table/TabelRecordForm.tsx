@@ -156,9 +156,9 @@ const TableRecordForm: React.FC = () => {
       width: 120,
       sorter: (a, b) => a.idRecordForm.localeCompare(b.idRecordForm),
       render: (text) => (
-        <span className="rounded border border-blue-100 bg-blue-50 px-2 py-1 font-mono font-semibold text-blue-600">
+        <Tag color="blue" className="font-medium">
           {text}
-        </span>
+        </Tag>
       ),
     },
     {

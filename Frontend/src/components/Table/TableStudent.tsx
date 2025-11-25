@@ -132,9 +132,9 @@ const TableStudent: React.FC = () => {
       key: "idStudent",
       width: 120,
       render: (text) => (
-        <span className="rounded border border-gray-200 bg-gray-100 px-2 py-1 font-mono font-semibold text-gray-700">
+        <Tag color="blue" className="font-medium">
           {text}
-        </span>
+        </Tag>
       ),
     },
     {

@@ -60,6 +60,13 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   const [openModifyRecordForm, setOpenModifyRecordForm] =
     useState<boolean>(false);
 
+  const [openAddClassForm, setOpenAddClassForm] = useState<boolean>(false);
+  const [reRenderTableClass, setReRenderTableClass] = useState<boolean>(false);
+
+  const [openAddTeacherForm, setOpenAddTeacherForm] = useState<boolean>(false);
+  const [reRenderTableTeacher, setReRenderTableTeacher] =
+    useState<boolean>(false);
+
   return (
     <AppContext.Provider
       value={{
@@ -95,6 +102,14 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         setCurrentRecordForm,
         openModifyRecordForm,
         setOpenModifyRecordForm,
+        openAddClassForm,
+        setOpenAddClassForm,
+        reRenderTableClass,
+        setReRenderTableClass,
+        openAddTeacherForm,
+        setOpenAddTeacherForm,
+        reRenderTableTeacher,
+        setReRenderTableTeacher,
       }}
     >
       {children}

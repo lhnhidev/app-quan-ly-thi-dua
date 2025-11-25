@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
-import { Card, Avatar, Tag, Button, Tabs } from "antd";
+import { Card, Avatar, Tag, Button, Tabs, Tooltip, Space } from "antd";
 import {
   UserOutlined,
   IdcardOutlined,
@@ -9,13 +9,13 @@ import {
 } from "@ant-design/icons";
 import useFetch from "../../hooks/useFetch";
 import { Loading } from "../../router";
+import { FiEdit, FiTrash2 } from "react-icons/fi";
+import { useAppContext } from "../../context";
 interface APIClassResponse {
   _id: string;
   name: string;
   idClass: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   students: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   teacher: any;
   point: number;
 }
@@ -34,6 +34,12 @@ const ManageClassPage: React.FC = () => {
   const { loading, error, request } = useFetch<APIClassResponse[]>();
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [activeTab, setActiveTab] = useState<string>("ALL");
+
+  const { setOpenAddClassForm } = useAppContext();
+
+  const handleDelete = (id: string) => {
+    console.log(id);
+  };
 
   useEffect(() => {
     const userInfoString = localStorage.getItem("userInfo");
@@ -110,7 +116,7 @@ const ManageClassPage: React.FC = () => {
       }}
       bodyStyle={{ padding: "0" }}
     >
-      <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-gray-50 bg-opacity-10 p-4">
+      <div className="group flex items-center justify-between border-b border-[var(--border-color)] bg-gray-50 bg-opacity-10 p-4">
         <div className="flex items-center gap-3">
           <Avatar
             src={cls.logo}
@@ -126,6 +132,29 @@ const ManageClassPage: React.FC = () => {
               {cls.displayId}
             </Tag>
           </div>
+        </div>
+
+        <div className="opacity-0 transition-opacity ease-in-out group-hover:opacity-100">
+          <Space size="small">
+            <Tooltip title="Chỉnh sửa">
+              <Button
+                type="text"
+                size="small"
+                icon={<FiEdit />}
+                className="text-blue-600 hover:bg-blue-50"
+                onClick={() => {}}
+              />
+            </Tooltip>
+            <Tooltip title="Xóa">
+              <Button
+                type="text"
+                size="small"
+                danger
+                icon={<FiTrash2 />}
+                onClick={() => handleDelete(cls.realId)}
+              />
+            </Tooltip>
+          </Space>
         </div>
       </div>
 
@@ -187,6 +216,7 @@ const ManageClassPage: React.FC = () => {
               ? "none"
               : "",
           }}
+          onClick={() => setOpenAddClassForm(true)}
         >
           Thêm lớp mới
         </Button>

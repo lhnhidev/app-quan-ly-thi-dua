@@ -32,8 +32,9 @@ const classSchema = new Schema<ClassType>(
       trim: true,
     },
     teacher: {
-      type: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId || null || undefined,
       ref: 'Teacher',
+      required: false,
     },
   },
   {

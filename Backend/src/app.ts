@@ -4,7 +4,7 @@ import cors from 'cors';
 import connectDB from './config/db';
 import router from './routes';
 
-const allowedOrigins = ['https://app-quan-ly-thi-dua.vercel.app'];
+const allowedOrigins = ['https://app-quan-ly-thi-dua.vercel.app', 'http://localhost:5173'];
 
 dotenv.config();
 
@@ -15,6 +15,9 @@ const app: Application = express();
 app.use(
   cors({
     origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Cho phép gửi cookie/token nếu cần
   })
 );
 app.use(express.json());
