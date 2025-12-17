@@ -31,7 +31,7 @@ interface Student {
   class: ClassInfo;
 }
 
-const TableStudent: React.FC = () => {
+const TableStudent = () => {
   const { loading, error, request } = useFetch<Student[]>();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);

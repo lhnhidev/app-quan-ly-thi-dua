@@ -27,6 +27,15 @@ interface Student {
   class: ClassInfo;
 }
 
+interface User {
+  _id: string;
+  idUser: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+}
+
 const AppProvider = ({ children }: { children: ReactNode }) => {
   const [ping, setPing] = useState<string>("Hello from app context!");
   const [location, setLocation] = useState<
@@ -41,6 +50,8 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
   const [modal, contextHolder] = Modal.useModal();
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [openAddRoleForm, setOpenAddRoleForm] = useState(false);
   const [reRenderRuleTable, setReRenderRuleTable] = useState(false);
@@ -66,6 +77,11 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   const [openAddTeacherForm, setOpenAddTeacherForm] = useState<boolean>(false);
   const [reRenderTableTeacher, setReRenderTableTeacher] =
     useState<boolean>(false);
+
+  const [openAddUserForm, setOpenAddUserForm] = useState<boolean>(false);
+  const [reRenderTableUser, setReRenderTableUser] = useState<boolean>(false);
+
+  const [openModifyUserForm, setOpenModifyUserForm] = useState<boolean>(false);
 
   return (
     <AppContext.Provider
@@ -110,6 +126,14 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         setOpenAddTeacherForm,
         reRenderTableTeacher,
         setReRenderTableTeacher,
+        openAddUserForm,
+        setOpenAddUserForm,
+        reRenderTableUser,
+        setReRenderTableUser,
+        currentUser,
+        setCurrentUser,
+        openModifyUserForm,
+        setOpenModifyUserForm,
       }}
     >
       {children}

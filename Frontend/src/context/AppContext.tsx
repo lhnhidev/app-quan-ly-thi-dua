@@ -74,6 +74,16 @@ export interface AppContextType {
   setOpenAddTeacherForm: React.Dispatch<React.SetStateAction<boolean>>;
   reRenderTableTeacher: boolean;
   setReRenderTableTeacher: React.Dispatch<React.SetStateAction<boolean>>;
+  openAddUserForm: boolean;
+  setOpenAddUserForm: React.Dispatch<React.SetStateAction<boolean>>;
+  reRenderTableUser: boolean;
+  setReRenderTableUser: React.Dispatch<React.SetStateAction<boolean>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  currentUser: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  setCurrentUser: React.Dispatch<React.SetStateAction<any>>;
+  openModifyUserForm: boolean;
+  setOpenModifyUserForm: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

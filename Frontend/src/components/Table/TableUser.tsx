@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Table, Input, Button, Tag, Space, Tooltip, Modal } from "antd";
+import { Table, Input, Button, Tag, Space, Tooltip } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { FiSearch, FiEdit, FiTrash2, FiUserPlus } from "react-icons/fi";
 import useFetch from "../../hooks/useFetch";
 import { Loading } from "../../router";
+import { useAppContext } from "../../context";
 
 interface User {
   _id: string;
@@ -14,11 +15,22 @@ interface User {
   role: "admin" | "user";
 }
 
-const ManageUserPage: React.FC = () => {
+const ManageUserPage = () => {
   const { loading, error, request } = useFetch<User[]>();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState("");
+
+  const {
+    setOpenAddUserForm,
+    setOpenModifyUserForm,
+    setReRenderTableUser,
+    modal,
+    messageApi,
+    reRenderTableUser,
+    setCurrentUser,
+    currentUser,
+  } = useAppContext();
 
   useEffect(() => {
     const userInfoString = localStorage.getItem("userInfo");
@@ -39,7 +51,47 @@ const ManageUserPage: React.FC = () => {
       }
     };
     fetchUsers();
-  }, [request]);
+  }, [request, reRenderTableUser]);
+
+  const handleChangeUser = (user: User) => {
+    setOpenModifyUserForm(true);
+    setCurrentUser(user);
+  };
+
+  const handleDeleteUser = async (id: string, idUser: string) => {
+    modal.confirm({
+      title: "Xác nhận xóa",
+      content: `Bạn có chắc muốn xóa người dùng ${idUser}?`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk() {
+        const deleteUser = async () => {
+          const userInfoString = localStorage.getItem("userInfo");
+          const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+          const token = userInfo?.token;
+
+          const result = await request(
+            `${import.meta.env.VITE_SERVER_URL}/user/deleteUser/${id}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          if (result) {
+            setReRenderTableUser(!reRenderTableUser);
+            messageApi.success("Xóa người dùng thành công");
+          }
+        };
+
+        deleteUser();
+      },
+    });
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toLowerCase();
@@ -131,6 +183,7 @@ const ManageUserPage: React.FC = () => {
               type="text"
               icon={<FiEdit size={18} />}
               className="text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              onClick={() => handleChangeUser(record)}
             />
           </Tooltip>
           <Tooltip title="Xóa">
@@ -139,19 +192,7 @@ const ManageUserPage: React.FC = () => {
               danger
               icon={<FiTrash2 size={18} />}
               className="hover:bg-red-50"
-              onClick={() => {
-                Modal.confirm({
-                  title: "Xác nhận xóa",
-                  content: `Bạn có chắc muốn xóa người dùng ${record.lastName} ${record.firstName}?`,
-                  okText: "Xóa",
-                  okType: "danger",
-                  cancelText: "Hủy",
-                  onOk() {
-                    console.log("Đã xóa:", record._id);
-                    // Gọi API xóa tại đây...
-                  },
-                });
-              }}
+              onClick={() => handleDeleteUser(record._id, record.idUser)}
             />
           </Tooltip>
         </Space>
@@ -198,6 +239,7 @@ const ManageUserPage: React.FC = () => {
             size="large"
             className="flex items-center shadow-md shadow-blue-200"
             style={{ backgroundColor: "var(--primary-color)" }}
+            onClick={() => setOpenAddUserForm(true)}
           >
             Thêm mới
           </Button>
