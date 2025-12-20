@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import type { TeacherData } from "../components/Table/TableTeacher";
 
 interface Teacher {
   _id: string;
@@ -23,6 +24,17 @@ interface Student {
   lastName: string;
   idStudent: string;
   class: ClassInfo;
+}
+
+interface ClassInfo2 {
+  realId: string;
+  displayId: string;
+  name: string;
+  grade: number;
+  teacher: string;
+  idTeacher: string;
+  studentCount: number;
+  logo: string;
 }
 
 export interface AppContextType {
@@ -84,6 +96,16 @@ export interface AppContextType {
   setCurrentUser: React.Dispatch<React.SetStateAction<any>>;
   openModifyUserForm: boolean;
   setOpenModifyUserForm: React.Dispatch<React.SetStateAction<boolean>>;
+  reRenderClassTable: boolean;
+  setReRenderClassTable: React.Dispatch<React.SetStateAction<boolean>>;
+  currentClass: ClassInfo2 | null;
+  setCurrentClass: React.Dispatch<React.SetStateAction<ClassInfo2 | null>>;
+  openModifyClassForm: boolean;
+  setOpenModifyClassForm: React.Dispatch<React.SetStateAction<boolean>>;
+  currentTeacher: TeacherData | null;
+  setCurrentTeacher: React.Dispatch<React.SetStateAction<TeacherData | null>>;
+  openModifyTeacherForm: boolean;
+  setOpenModifyTeacherForm: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);

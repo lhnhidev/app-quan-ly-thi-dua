@@ -52,13 +52,13 @@ const ModifyStudentForm = () => {
   useEffect(() => {
     if (openModifyStudentForm && currentStudent) {
       form.setFieldsValue({
-        firstName: currentStudent.firstName,
-        lastName: currentStudent.lastName,
-        idStudent: currentStudent.idStudent,
+        firstName: currentStudent?.firstName || "",
+        lastName: currentStudent?.lastName || "",
+        idStudent: currentStudent?.idStudent || "",
         class:
-          typeof currentStudent.class === "object"
-            ? currentStudent.class._id
-            : currentStudent.class,
+          typeof currentStudent?.class === "object"
+            ? currentStudent?.class?._id
+            : (currentStudent?.class as unknown as string) || "",
       });
     }
   }, [openModifyStudentForm, currentStudent, form]);

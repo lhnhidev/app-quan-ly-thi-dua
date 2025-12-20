@@ -11,6 +11,7 @@ import useFetch from "../../hooks/useFetch";
 import { Loading } from "../../router";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import { useAppContext } from "../../context";
+
 interface APIClassResponse {
   _id: string;
   name: string;
@@ -26,6 +27,7 @@ interface ClassInfo {
   name: string;
   grade: number;
   teacher: string;
+  idTeacher: string;
   studentCount: number;
   logo: string;
 }
@@ -35,10 +37,54 @@ const ManageClassPage: React.FC = () => {
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [activeTab, setActiveTab] = useState<string>("ALL");
 
-  const { setOpenAddClassForm } = useAppContext();
+  const {
+    setOpenAddClassForm,
+    reRenderClassTable,
+    setReRenderClassTable,
+    messageApi,
+    modal,
+    setCurrentClass,
+    setOpenModifyClassForm,
+  } = useAppContext();
 
-  const handleDelete = (id: string) => {
-    console.log(id);
+  const handleDelete = async (id: string, displayId: string) => {
+    const userInfoString = localStorage.getItem("userInfo");
+    const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+    const token = userInfo?.token;
+
+    modal.confirm({
+      title: "Xác nhận xóa",
+      content: `Bạn có chắc muốn xóa lớp ${displayId}?`,
+      okText: "Xóa",
+      okType: "danger",
+      cancelText: "Hủy",
+      onOk() {
+        const deleteStudent = async () => {
+          const res = await request(
+            `${import.meta.env.VITE_SERVER_URL}/class/${id}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            },
+          );
+
+          if (res && res.status === 404) {
+            messageApi.error("Không tìm thấy lớp học.");
+            return;
+          }
+
+          if (res) {
+            messageApi.success("Xóa lớp thành công.");
+            setReRenderClassTable((prev) => !prev);
+          }
+        };
+
+        deleteStudent();
+      },
+    });
   };
 
   useEffect(() => {
@@ -59,7 +105,7 @@ const ManageClassPage: React.FC = () => {
         const mappedData: ClassInfo[] = data.map(
           (item: {
             idClass: string;
-            teacher: { lastName: any; firstName: any };
+            teacher: { _id: string; lastName: string; firstName: string };
             _id: any;
             name: any;
             students: string | any[];
@@ -78,6 +124,7 @@ const ManageClassPage: React.FC = () => {
               name: item.name,
               grade: grade,
               teacher: teacherName,
+              idTeacher: item.teacher ? item.teacher._id : "",
               studentCount: item.students ? item.students.length : 0,
               logo: `https://ui-avatars.com/api/?name=${item.idClass}&background=random&color=fff&size=128&font-size=0.4`,
             };
@@ -89,7 +136,7 @@ const ManageClassPage: React.FC = () => {
     };
 
     fetchClasses();
-  }, [request]);
+  }, [request, reRenderClassTable]);
 
   const filteredClasses =
     activeTab === "ALL"
@@ -142,7 +189,10 @@ const ManageClassPage: React.FC = () => {
                 size="small"
                 icon={<FiEdit />}
                 className="text-blue-600 hover:bg-blue-50"
-                onClick={() => {}}
+                onClick={() => {
+                  setCurrentClass(cls);
+                  setOpenModifyClassForm(true);
+                }}
               />
             </Tooltip>
             <Tooltip title="Xóa">
@@ -151,7 +201,7 @@ const ManageClassPage: React.FC = () => {
                 size="small"
                 danger
                 icon={<FiTrash2 />}
-                onClick={() => handleDelete(cls.realId)}
+                onClick={() => handleDelete(cls.realId, cls.displayId)}
               />
             </Tooltip>
           </Space>

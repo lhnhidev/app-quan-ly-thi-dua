@@ -24,9 +24,9 @@ const studentSchema: Schema = new Schema(
       unique: true,
     },
     class: {
-      type: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId || null || undefined,
       ref: 'Class',
-      required: true,
+      required: false,
     },
     recordForms: [
       {

@@ -111,3 +111,97 @@ export const deleteTeacher = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const modifyTeacher = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // ID (realId) của giáo viên đang sửa
+    const {
+      idTeacher, // Mã giáo viên (VD: GV001)
+      email,
+      firstName,
+      lastName,
+      idClass, // ID lớp chủ nhiệm mới (hoặc null)
+    } = req.body;
+
+    // --- BƯỚC 1: KIỂM TRA TRÙNG MÃ GIÁO VIÊN ---
+    // Tìm giáo viên có idTeacher trùng, nhưng ID không phải là giáo viên đang sửa
+    const duplicateCode = await Teacher.findOne({
+      idTeacher: idTeacher,
+      _id: { $ne: id },
+    });
+
+    if (duplicateCode) {
+      return res.status(200).json({
+        status: 400,
+        message: 'Mã giáo viên đã tồn tại trong hệ thống!',
+      });
+    }
+
+    // --- BƯỚC 2: KIỂM TRA TRÙNG EMAIL ---
+    const duplicateEmail = await Teacher.findOne({
+      email: email,
+      _id: { $ne: id },
+    });
+
+    if (duplicateEmail) {
+      return res.status(200).json({
+        status: 400,
+        message: 'Email này đã được sử dụng bởi giáo viên khác!',
+      });
+    }
+
+    // --- BƯỚC 3: XỬ LÝ LOGIC LỚP CHỦ NHIỆM ---
+
+    // Lấy thông tin hiện tại của giáo viên (để biết lớp cũ là lớp nào)
+    const currentTeacherData = await Teacher.findById(id);
+    if (!currentTeacherData) {
+      return res.status(404).json({ message: 'Không tìm thấy giáo viên' });
+    }
+
+    const oldClassId = currentTeacherData.idClass; // Lớp cũ
+
+    // Nếu có sự thay đổi về lớp (Chuyển lớp hoặc Hủy lớp)
+    if (idClass !== oldClassId?.toString()) {
+      // 3.1. Dọn dẹp lớp CŨ (Nếu trước đó giáo viên có chủ nhiệm lớp)
+      if (oldClassId) {
+        await Class.findByIdAndUpdate(oldClassId, { teacher: null });
+      }
+
+      // 3.2. Xử lý lớp MỚI
+      if (idClass) {
+        // Tìm lớp mới xem có ai đang chủ nhiệm không
+        const targetClass = await Class.findById(idClass);
+
+        if (targetClass && targetClass.teacher) {
+          // LOGIC YÊU CẦU: Nếu lớp đó đã có giáo viên khác chủ nhiệm -> Set giáo viên đó thành không chủ nhiệm
+          // targetClass.teacher chính là ID của giáo viên đang bị chiếm chỗ
+          await Teacher.findByIdAndUpdate(targetClass.teacher, { idClass: null });
+        }
+
+        // Cập nhật lớp mới: Set chủ nhiệm là giáo viên hiện tại
+        await Class.findByIdAndUpdate(idClass, { teacher: id });
+      }
+    }
+
+    // --- BƯỚC 4: CẬP NHẬT THÔNG TIN GIÁO VIÊN ---
+    const updatedTeacher = await Teacher.findByIdAndUpdate(
+      id,
+      {
+        idTeacher,
+        firstName,
+        lastName,
+        email,
+        idClass: idClass || null, // Nếu idClass gửi lên là "" hoặc undefined thì lưu là null
+      },
+      { new: true } // Trả về data mới nhất
+    ).populate('idClass'); // Populate để trả về data đẹp nếu cần hiển thị ngay
+
+    return res.status(200).json({
+      message: 'Cập nhật thông tin giáo viên thành công!',
+      data: updatedTeacher,
+    });
+  } catch (error) {
+    console.error('Modify Teacher Error:', error);
+    return res.status(500).json({ message: 'Lỗi server khi cập nhật giáo viên' });
+  }
+};

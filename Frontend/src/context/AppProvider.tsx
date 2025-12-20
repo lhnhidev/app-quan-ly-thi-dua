@@ -1,6 +1,7 @@
 import { message, Modal } from "antd";
 import { AppContext } from "./AppContext";
 import { useState, type ReactNode } from "react";
+import type { TeacherData } from "../components/Table/TableTeacher";
 
 interface Teacher {
   _id: string;
@@ -17,6 +18,17 @@ interface ClassInfo {
   point: number;
   students: string[];
   teacher: Teacher;
+}
+
+interface ClassInfo2 {
+  realId: string;
+  displayId: string;
+  name: string;
+  grade: number;
+  teacher: string;
+  idTeacher: string;
+  studentCount: number;
+  logo: string;
 }
 
 interface Student {
@@ -83,6 +95,19 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const [openModifyUserForm, setOpenModifyUserForm] = useState<boolean>(false);
 
+  const [reRenderClassTable, setReRenderClassTable] = useState<boolean>(false);
+
+  const [currentClass, setCurrentClass] = useState<ClassInfo2 | null>(null);
+
+  const [openModifyClassForm, setOpenModifyClassForm] =
+    useState<boolean>(false);
+
+  const [currentTeacher, setCurrentTeacher] = useState<TeacherData | null>(
+    null,
+  );
+  const [openModifyTeacherForm, setOpenModifyTeacherForm] =
+    useState<boolean>(false);
+
   return (
     <AppContext.Provider
       value={{
@@ -134,6 +159,16 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         setCurrentUser,
         openModifyUserForm,
         setOpenModifyUserForm,
+        reRenderClassTable,
+        setReRenderClassTable,
+        currentClass,
+        setCurrentClass,
+        openModifyClassForm,
+        setOpenModifyClassForm,
+        currentTeacher,
+        setCurrentTeacher,
+        openModifyTeacherForm,
+        setOpenModifyTeacherForm,
       }}
     >
       {children}

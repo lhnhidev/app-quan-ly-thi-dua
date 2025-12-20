@@ -1,28 +1,76 @@
+import { useEffect, useState } from "react"; // Thêm useEffect, useState
 import { Modal, Form, Input, Button, message, Select, Divider } from "antd";
-import { UserAddOutlined } from "@ant-design/icons"; // Icon cho tiêu đề Modal
+import { UserAddOutlined } from "@ant-design/icons";
 import {
   RiIdCardLine,
   RiMailLine,
   RiLockPasswordLine,
   RiUserStarLine,
   RiSave3Line,
-} from "react-icons/ri"; // Icon cho các trường nhập liệu
-import { useAppContext } from "../../context"; // Đảm bảo đường dẫn đúng
-import useFetch from "../../hooks/useFetch"; // Đảm bảo đường dẫn đúng
+  RiBuilding4Line, // Icon mới cho lớp học
+} from "react-icons/ri";
+import { useAppContext } from "../../context";
+import useFetch from "../../hooks/useFetch";
 
 const { Option } = Select;
+
+// Interface cho Lớp học (Tùy chỉnh theo response thực tế của bạn)
+interface IClass {
+  _id: string;
+  name: string;
+}
 
 const AddUserForm = () => {
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Lấy state từ Context
   const { openAddUserForm, setOpenAddUserForm, setReRenderTableUser } =
     useAppContext();
 
   const [form] = Form.useForm();
   const { request, loading } = useFetch();
 
-  // Xử lý Submit
+  // 1. State lưu danh sách lớp
+  const [classesList, setClassesList] = useState<IClass[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState<boolean>(false);
+
+  // 2. Theo dõi giá trị của Role để ẩn hiện trường lớp học
+  const currentRole = Form.useWatch("role", form);
+
+  // 3. Fetch danh sách lớp khi mở form
+  useEffect(() => {
+    if (openAddUserForm) {
+      const fetchClasses = async () => {
+        setLoadingClasses(true);
+        try {
+          const userInfoString = localStorage.getItem("userInfo");
+          const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+
+          // Gọi API lấy danh sách lớp
+          const res = await request(
+            `${import.meta.env.VITE_SERVER_URL}/class`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${userInfo?.token}`,
+              },
+            },
+          );
+
+          if (res) {
+            setClassesList(res);
+          }
+        } catch (error) {
+          console.error("Lỗi lấy danh sách lớp:", error);
+        } finally {
+          setLoadingClasses(false);
+        }
+      };
+
+      fetchClasses();
+    }
+  }, [openAddUserForm, request]);
+
+  // Interface Form
   interface IFormValues {
     firstName: string;
     lastName: string;
@@ -30,6 +78,7 @@ const AddUserForm = () => {
     password: string;
     role: string;
     idUser: string;
+    followingClasses?: string[]; // Thêm trường này
   }
 
   interface IUserInfo {
@@ -43,6 +92,7 @@ const AddUserForm = () => {
       : null;
     const token = userInfo?.token;
 
+    // 4. Chuẩn bị Payload
     const payload: IFormValues = {
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
@@ -50,6 +100,9 @@ const AddUserForm = () => {
       password: values.password,
       role: values.role,
       idUser: values.idUser.trim().toUpperCase(),
+      // Nếu là admin thì gửi mảng rỗng, ngược lại gửi mảng các ID lớp đã chọn
+      followingClasses:
+        values.role === "admin" ? [] : values.followingClasses || [],
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,7 +127,6 @@ const AddUserForm = () => {
       messageApi.success("Thêm người dùng thành công!");
       form.resetFields();
       setOpenAddUserForm(false);
-      // Trigger reload bảng user
       if (setReRenderTableUser) setReRenderTableUser((prev) => !prev);
     }
   };
@@ -109,7 +161,8 @@ const AddUserForm = () => {
         layout="vertical"
         className="mt-4"
         initialValues={{
-          role: "student", // Mặc định là học sinh
+          role: "student",
+          followingClasses: [],
         }}
         size="large"
       >
@@ -148,6 +201,37 @@ const AddUserForm = () => {
             </Select>
           </Form.Item>
         </div>
+
+        {/* 5. Logic hiển thị trường chọn lớp */}
+        {currentRole !== "admin" && (
+          <div className="mt-2">
+            <Form.Item
+              label="Lớp theo dõi / Phụ trách"
+              name="followingClasses"
+              tooltip="Chọn các lớp mà người dùng này có quyền xem hoặc quản lý"
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder={
+                  loadingClasses ? "Đang tải lớp..." : "Chọn các lớp..."
+                }
+                loading={loadingClasses}
+                suffixIcon={<RiBuilding4Line className="text-gray-400" />}
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                options={classesList.map((cls) => ({
+                  value: cls._id,
+                  label: cls.name,
+                }))}
+              />
+            </Form.Item>
+          </div>
+        )}
 
         <Divider dashed className="my-2 border-gray-300" />
 

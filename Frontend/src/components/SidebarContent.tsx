@@ -17,13 +17,13 @@ const SidebarContent = () => {
 
     // Kiểm tra xem đường dẫn bắt đầu bằng gì để active mục tương ứng
     if (path.startsWith("/user")) return "2";
-    if (path.startsWith("/class")) return "3";
-    if (path.startsWith("/student")) return "4";
-    if (path.startsWith("/teacher")) return "5";
-    if (path.startsWith("/record-form")) return "6";
-    if (path.startsWith("/role")) return "7";
-    if (path.startsWith("/ranking")) return "8";
-
+    if (path.startsWith("/assign-classes")) return "3";
+    if (path.startsWith("/class")) return "4";
+    if (path.startsWith("/student")) return "5";
+    if (path.startsWith("/teacher")) return "6";
+    if (path.startsWith("/record-form")) return "7";
+    if (path.startsWith("/role")) return "8";
+    if (path.startsWith("/ranking")) return "9";
     // Mặc định là dashboard (key "1") cho trang chủ hoặc /dashboard
     return "1";
   };
@@ -52,48 +52,55 @@ const SidebarContent = () => {
         },
         {
           key: "3",
+          icon: <CalendarOutlined />,
+          label: "Phân công trực nhật",
+          className: "rounded-r-full my-1.5 h-12 flex items-center",
+          onClick: () => navigate("/assign-classes"),
+        },
+        {
+          key: "4",
           icon: <FolderOutlined />,
           label: "Quản lý lớp học",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/class"),
         },
         {
-          key: "4",
+          key: "5",
           icon: <FolderOutlined />,
           label: "Quản lý học sinh",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/student"),
         },
         {
-          key: "5",
+          key: "6",
           icon: <FolderOutlined />,
           label: "Quản lý giáo viên",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/teacher"),
         },
         {
-          key: "6",
+          key: "7",
           icon: <FolderOutlined />,
           label: "Quản lý phiếu thi đua",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/record-form"),
         },
         {
-          key: "7",
+          key: "8",
           icon: <FolderOutlined />,
           label: "Quản lý thang điểm",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/role"),
         },
         {
-          key: "8",
+          key: "9",
           icon: <FolderOutlined />,
           label: "Bảng xếp hạng",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/ranking"),
         },
         {
-          key: "9",
+          key: "10",
           icon: <SettingOutlined />,
           label: "Cài đặt",
           className: "rounded-r-full my-1.5 h-12 flex items-center",

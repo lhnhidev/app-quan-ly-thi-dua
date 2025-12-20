@@ -14,7 +14,7 @@ interface ClassInfo {
   point: number;
 }
 
-interface TeacherData {
+export interface TeacherData {
   _id: string;
   idTeacher: string;
   firstName: string;
@@ -37,6 +37,8 @@ const TableTeacher = () => {
     modal,
     messageApi,
     setReRenderTableTeacher,
+    setOpenModifyTeacherForm,
+    setCurrentTeacher,
   } = useAppContext();
 
   const handleDelete = (id: string, idTeacher: string) => {
@@ -175,7 +177,10 @@ const TableTeacher = () => {
               size="small"
               icon={<FiEdit />}
               className="text-blue-600 hover:bg-blue-50"
-              onClick={() => {}}
+              onClick={() => {
+                setCurrentTeacher(record);
+                setOpenModifyTeacherForm(true);
+              }}
             />
           </Tooltip>
           <Tooltip title="Xóa">

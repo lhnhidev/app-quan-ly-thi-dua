@@ -158,8 +158,11 @@ const TableStudent = () => {
       width: 100,
       sorter: (a, b) => a.class.name.localeCompare(b.class.name),
       render: (text) => (
-        <Tag color="cyan" className="rounded px-2 font-medium">
-          {text}
+        <Tag
+          color={`${text ? "cyan" : "yellow"}`}
+          className="rounded px-2 font-medium"
+        >
+          {text || "Chưa có"}
         </Tag>
       ),
     },

@@ -6,6 +6,7 @@ import {
   loginUser,
   deleteUser,
   modifyUser,
+  getCoDo,
 } from '../controllers/user.controller';
 import { protect } from '../middlewares/protect';
 
@@ -17,6 +18,7 @@ router.use(protect);
 
 router.get('/', getUsers);
 router.get('/test', index);
+router.get('/co-do', getCoDo);
 router.post('/createNewUser', createUser);
 router.delete('/deleteUser/:id', deleteUser);
 router.patch('/modifyUser/:id', modifyUser);

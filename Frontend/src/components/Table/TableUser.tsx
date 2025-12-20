@@ -29,7 +29,6 @@ const ManageUserPage = () => {
     messageApi,
     reRenderTableUser,
     setCurrentUser,
-    currentUser,
   } = useAppContext();
 
   useEffect(() => {
@@ -156,9 +155,15 @@ const ManageUserPage = () => {
         if (role === "admin") {
           color = "volcano";
           label = "Quản trị viên";
-        } else {
+        } else if (role === "user") {
           color = "green";
-          label = "Người dùng";
+          label = "Cờ đỏ";
+        } else if (role === "teacher") {
+          color = "purple";
+          label = "Giáo viên";
+        } else if (role === "student") {
+          color = "cyan";
+          label = "Học sinh";
         }
 
         return (

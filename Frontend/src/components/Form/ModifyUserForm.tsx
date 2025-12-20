@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Modal, Form, Input, Button, message, Select, Divider } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import {
@@ -7,11 +7,18 @@ import {
   RiLockPasswordLine,
   RiUserStarLine,
   RiSave3Line,
+  RiBuilding4Line, // Icon cho lớp học
 } from "react-icons/ri";
 import { useAppContext } from "../../context";
 import useFetch from "../../hooks/useFetch";
 
 const { Option } = Select;
+
+// Interface cho Lớp học
+interface IClass {
+  _id: string;
+  name: string;
+}
 
 const ModifyUserForm = () => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -27,21 +34,68 @@ const ModifyUserForm = () => {
   const [form] = Form.useForm();
   const { request, loading } = useFetch();
 
-  // useEffect: Đổ dữ liệu user vào form khi mở modal
+  // 1. State lưu danh sách lớp
+  const [classesList, setClassesList] = useState<IClass[]>([]);
+  const [loadingClasses, setLoadingClasses] = useState<boolean>(false);
+
+  // 2. Theo dõi giá trị Role để ẩn hiện trường lớp học
+  const currentRole = Form.useWatch("role", form);
+
+  // 3. Fetch danh sách lớp khi mở modal
+  useEffect(() => {
+    if (openModifyUserForm) {
+      const fetchClasses = async () => {
+        setLoadingClasses(true);
+        try {
+          const userInfoString = localStorage.getItem("userInfo");
+          const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+
+          const res = await request(
+            `${import.meta.env.VITE_SERVER_URL}/class`,
+            {
+              method: "GET",
+              headers: { Authorization: `Bearer ${userInfo?.token}` },
+            },
+          );
+
+          if (res) {
+            setClassesList(res);
+          }
+        } catch (error) {
+          console.error("Lỗi lấy danh sách lớp:", error);
+        } finally {
+          setLoadingClasses(false);
+        }
+      };
+      fetchClasses();
+    }
+  }, [openModifyUserForm, request]);
+
+  // 4. useEffect: Đổ dữ liệu user cũ vào form
   useEffect(() => {
     if (openModifyUserForm && currentUser) {
+      // Xử lý followingClasses:
+      // Backend có thể trả về mảng ID ["id1", "id2"] hoặc mảng Object [{_id: "id1", ...}] (nếu đã populate)
+      // Select của Antd cần mảng string ID để hiển thị default value đúng.
+      const processedFollowingClasses =
+        currentUser.followingClasses?.map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item: any) => (typeof item === "object" ? item._id : item),
+        ) || [];
+
       form.setFieldsValue({
         idUser: currentUser.idUser,
         firstName: currentUser.firstName,
         lastName: currentUser.lastName,
         email: currentUser.email,
         role: currentUser.role,
-        password: currentUser.password,
+        // Password không điền lại
+        followingClasses: processedFollowingClasses,
       });
     }
   }, [openModifyUserForm, currentUser, form]);
 
-  // Xử lý Cập nhật
+  // Interface cho Form Values
   interface ModifyUserFormValues {
     idUser: string;
     firstName: string;
@@ -49,6 +103,7 @@ const ModifyUserForm = () => {
     email: string;
     role: "student" | "teacher" | "user" | "admin";
     password?: string;
+    followingClasses?: string[]; // Thêm trường này
   }
 
   interface UserInfo {
@@ -62,6 +117,7 @@ const ModifyUserForm = () => {
     role: "student" | "teacher" | "user" | "admin";
     idUser: string;
     password?: string;
+    followingClasses?: string[]; // Thêm trường này vào payload
   }
 
   const onFinish = async (values: ModifyUserFormValues) => {
@@ -71,22 +127,24 @@ const ModifyUserForm = () => {
       : null;
     const token = userInfo?.token;
 
-    // Chuẩn bị payload
+    // 5. Chuẩn bị payload
     const payload: UpdateUserPayload = {
       firstName: values.firstName.trim(),
       lastName: values.lastName.trim(),
       email: values.email.trim(),
       role: values.role,
       idUser: values.idUser.trim().toUpperCase(),
+      // Nếu là admin thì gửi mảng rỗng (hoặc backend tự xử lý), ngược lại lấy giá trị form
+      followingClasses:
+        values.role === "admin" ? [] : values.followingClasses || [],
     };
 
-    // Chỉ gửi password nếu người dùng có nhập (đổi pass mới)
+    // Chỉ gửi password nếu người dùng có nhập
     if (values.password) {
       payload.password = values.password;
     }
 
     // Gọi API PATCH
-    // URL: /user/modifyUser/:id (Dùng _id của MongoDB)
     const response = await request(
       `${import.meta.env.VITE_SERVER_URL}/user/modifyUser/${currentUser._id}`,
       {
@@ -101,8 +159,7 @@ const ModifyUserForm = () => {
 
     if (response) {
       messageApi.success("Cập nhật thông tin thành công!");
-      handleCancel(); // Đóng modal
-      // Reload lại bảng
+      handleCancel();
       if (setReRenderTableUser) setReRenderTableUser((prev) => !prev);
     }
   };
@@ -173,6 +230,37 @@ const ModifyUserForm = () => {
             </Select>
           </Form.Item>
         </div>
+
+        {/* 6. Hiển thị trường chọn lớp (Logic tương tự AddUserForm) */}
+        {currentRole !== "admin" && (
+          <div className="mt-2">
+            <Form.Item
+              label="Lớp theo dõi / Phụ trách"
+              name="followingClasses"
+              tooltip="Chọn các lớp mà người dùng này có quyền xem hoặc quản lý"
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder={
+                  loadingClasses ? "Đang tải lớp..." : "Chọn các lớp..."
+                }
+                loading={loadingClasses}
+                suffixIcon={<RiBuilding4Line className="text-gray-400" />}
+                optionFilterProp="label"
+                filterOption={(input, option) =>
+                  (option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                options={classesList.map((cls) => ({
+                  value: cls._id,
+                  label: cls.name,
+                }))}
+              />
+            </Form.Item>
+          </div>
+        )}
 
         <Divider dashed className="my-2 border-gray-300" />
 
