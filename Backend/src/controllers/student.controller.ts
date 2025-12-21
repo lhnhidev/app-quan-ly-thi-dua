@@ -144,3 +144,34 @@ export const deleteStudent = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server Error' });
   }
 };
+
+export const getStudentsWithDetails = async (req: Request, res: Response) => {
+  try {
+    const students = await Student.find({})
+      .populate({
+        path: 'class',
+        populate: {
+          path: 'teacher',
+        },
+      }) // Populate thông tin lớp
+      .populate({
+        path: 'recordForms', // Populate danh sách phiếu phạt
+        populate: [
+          {
+            path: 'user', // <--- Populate lồng nhau để lấy thông tin người lập
+            select: 'idUser firstName lastName', // Chỉ lấy mã, họ, tên
+          },
+          {
+            path: 'rule',
+          },
+        ],
+      });
+
+    return res.status(200).json(students);
+  } catch (error) {
+    if (error instanceof Error) {
+      return res.status(500).json({ message: error.message });
+    }
+    return res.status(500).json({ message: 'An unknown error occurred' });
+  }
+};

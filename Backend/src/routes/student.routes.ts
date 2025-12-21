@@ -5,6 +5,7 @@ import {
   addStudents,
   modifyStudent,
   deleteStudent,
+  getStudentsWithDetails,
 } from '../controllers/student.controller';
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
 router.use(protect);
 
 router.get('/', getStudents);
+router.get('/desc', getStudentsWithDetails);
 router.post('/', addStudents);
 router.patch('/:id', modifyStudent);
 router.delete('/:id', deleteStudent);

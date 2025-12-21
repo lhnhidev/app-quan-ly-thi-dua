@@ -20,6 +20,7 @@ import dayjs, { Dayjs } from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import "dayjs/locale/vi";
 import { useAppContext } from "../context";
+import StudentEvaluationTables from "./StudentEvaluationTables";
 
 // Kích hoạt plugin
 dayjs.extend(isBetween);
@@ -27,10 +28,18 @@ dayjs.locale("vi");
 
 // --- INTERFACES ---
 
+interface IRecordCreator {
+  _id: string;
+  idUser: string;
+  firstName: string;
+  lastName: string;
+}
+
 // 1. Interface cho Rule (Quy định)
 interface IRule {
   _id: string;
-  name: string;
+  idRule?: string; // Thêm trường này (ví dụ: RL-024)
+  content?: string; // JSON trả về là content, không phải name
   point: number;
 }
 
@@ -57,11 +66,14 @@ interface IClass {
 interface IRecordForm {
   _id: string;
   idRecordForm: string;
-  time: string; // Thời gian vi phạm thực tế
-  createdAt: string; // Thời gian tạo phiếu
-  user: string; // ID người lập (User ID)
-  rule: string | IRule; // Có thể là ID hoặc Object tùy API populate
-  content?: string; // Nội dung bổ sung nếu có
+  time: string;
+  createdAt: string;
+
+  // Quan trọng: user bây giờ là một Object (IRecordCreator) chứ không phải string nữa
+  user: IRecordCreator;
+
+  rule: string | IRule;
+  content?: string; // Thêm trường content
 }
 
 // 5. Interface cho Student (Từ API /student)
@@ -84,8 +96,14 @@ interface ComputedClassData extends IClass {
 interface ComputedStudentData extends IStudent {
   totalPoint: number;
   rank?: number;
-  // Dữ liệu chi tiết vi phạm đã được map với Rule
-  validRecords: Array<IRecordForm & { ruleName: string; rulePoint: number }>;
+  // validRecords chứa thông tin đã được làm phẳng để dễ hiển thị
+  validRecords: Array<
+    IRecordForm & {
+      ruleContent: string; // Nội dung lỗi
+      ruleCode: string; // Mã lỗi (RL-xxx)
+      rulePoint: number; // Điểm
+    }
+  >;
 }
 
 const ClassCompetitionChart: React.FC = () => {
@@ -131,7 +149,7 @@ const ClassCompetitionChart: React.FC = () => {
               method: "GET",
               headers: { Authorization: `Bearer ${token}` },
             }),
-            request(`${import.meta.env.VITE_SERVER_URL}/student`, {
+            request(`${import.meta.env.VITE_SERVER_URL}/student/desc`, {
               // Student chứa record riêng
               method: "GET",
               headers: { Authorization: `Bearer ${token}` },
@@ -240,23 +258,18 @@ const ClassCompetitionChart: React.FC = () => {
   };
 
   // --- HÀM XỬ LÝ: TÍNH ĐIỂM HỌC SINH ---
+  // --- HÀM XỬ LÝ: TÍNH ĐIỂM HỌC SINH ---
   const processStudentRanking = (
     studentList: IStudent[],
-    ruleList: IRule[],
+    _ruleList: IRule[], // Có thể không cần dùng đến ruleList này nữa nếu API đã populate đủ
     week: Dayjs,
   ) => {
     const startOfWeek = week.startOf("week").add(1, "day");
     const endOfWeek = week.endOf("week").add(1, "day");
 
-    // 1. Tạo Map Rule để tra cứu nhanh (ID -> Rule Object)
-    const ruleMap = new Map<string, IRule>();
-    ruleList.forEach((r) => ruleMap.set(r._id, r));
-
     const computedStudents: ComputedStudentData[] = studentList.map((st) => {
       let totalPoint = 0;
-      const validRecords: Array<
-        IRecordForm & { ruleName: string; rulePoint: number }
-      > = [];
+      const validRecords: any[] = []; // Dùng tạm any để push dễ dàng
 
       if (st.recordForms && st.recordForms.length > 0) {
         st.recordForms.forEach((record) => {
@@ -264,17 +277,19 @@ const ClassCompetitionChart: React.FC = () => {
 
           // Kiểm tra ngày
           if (recordDate.isBetween(startOfWeek, endOfWeek, "day", "[]")) {
-            // Lấy Rule ID từ record (trong JSON mẫu: "rule": "ID_STRING")
-            const ruleId =
-              typeof record.rule === "string" ? record.rule : record.rule._id;
-            const ruleInfo = ruleMap.get(ruleId);
+            // --- SỬA Ở ĐÂY: Lấy trực tiếp từ record.rule (vì đã populate) ---
+            const ruleData = record.rule as unknown as IRule; // Cast kiểu để lấy dữ liệu
 
-            if (ruleInfo) {
-              totalPoint += ruleInfo.point;
+            if (ruleData) {
+              const points = ruleData.point || 0;
+              totalPoint += points;
+
               validRecords.push({
                 ...record,
-                ruleName: ruleInfo.name,
-                rulePoint: ruleInfo.point,
+                // Map dữ liệu ra ngoài để hiển thị trong Table dễ hơn
+                ruleContent: ruleData.content || "Lỗi không xác định",
+                ruleCode: ruleData.idRule || "---",
+                rulePoint: points,
               });
             }
           }
@@ -283,14 +298,11 @@ const ClassCompetitionChart: React.FC = () => {
 
       return {
         ...st,
-        totalPoint, // Initial là 0, cộng dồn các rule
+        totalPoint,
         validRecords,
       };
     });
 
-    // Sắp xếp: Điểm cao nhất lên đầu (hoặc thấp nhất tùy logic, thường thi đua là điểm càng cao càng tốt hoặc điểm trừ càng ít càng tốt)
-    // Ở đây mình sort theo Total Point giảm dần (Giả sử điểm cộng là tốt)
-    // Nếu thi đua là trừ điểm (âm), thì người ít âm nhất (lớn nhất) vẫn xếp trên.
     const sortedStudents = computedStudents.sort(
       (a, b) => b.totalPoint - a.totalPoint,
     );
@@ -406,7 +418,18 @@ const ClassCompetitionChart: React.FC = () => {
       title: "GVCN",
       key: "teacher",
       render: (_: any, r: ComputedClassData) =>
-        r.teacher ? `${r.teacher.lastName} ${r.teacher.firstName}` : "---",
+        r.teacher ? (
+          <div className="flex flex-col">
+            <Tag color="blue" className="mb-1 w-fit">
+              {r.teacher.idTeacher}
+            </Tag>
+            <span className="text-xs">
+              {r.teacher.lastName} {r.teacher.firstName}
+            </span>
+          </div>
+        ) : (
+          "---"
+        ),
     },
     {
       title: "Điểm",
@@ -463,13 +486,19 @@ const ClassCompetitionChart: React.FC = () => {
     {
       title: "GVCN",
       key: "gvcn",
-      render: (_: any, r: ComputedStudentData) => (
-        <span className="text-xs text-gray-500">
-          {r.class?.teacher
-            ? `${r.class.teacher.lastName} ${r.class.teacher.firstName}`
-            : "---"}
-        </span>
-      ),
+      render: (_: any, r: ComputedStudentData) =>
+        r.class?.teacher ? (
+          <div className="flex flex-col">
+            <Tag color="blue" className="mb-1 w-fit">
+              {r.class?.teacher.idTeacher}
+            </Tag>
+            <span className="text-xs">
+              {r.class?.teacher.lastName} {r.class?.teacher.firstName}
+            </span>
+          </div>
+        ) : (
+          "---"
+        ),
     },
     {
       title: "Điểm số",
@@ -490,30 +519,64 @@ const ClassCompetitionChart: React.FC = () => {
   ];
 
   // 3. Expanded Row (Chi tiết vi phạm học sinh)
+  // 3. Expanded Row (Chi tiết vi phạm học sinh)
   const expandedRowRender = (record: ComputedStudentData) => {
     const detailColumns = [
       {
         title: "Ngày lập",
         dataIndex: "createdAt",
+        width: 140,
         render: (t: string) => dayjs(t).format("DD/MM/YYYY HH:mm"),
       },
       {
         title: "Nội dung / Lỗi",
-        dataIndex: "ruleName",
-        key: "ruleName",
-        render: (t: string) => <span className="font-semibold">{t}</span>,
+        key: "content",
+        // r ở đây là item trong validRecords
+        render: (_: any, r: any) => (
+          <div className="flex flex-col">
+            {/* 1. Hiển thị Mã lỗi (idRule) */}
+            <span className="font-bold text-gray-800">
+              {r.ruleCode} {/* Lấy từ field ta đã map ở bước 2 */}
+            </span>
+
+            {/* 2. Hiển thị Nội dung lỗi (content trong rule) */}
+            <span className="text-sm italic text-gray-500">
+              {r.ruleContent} {/* Lấy từ field ta đã map ở bước 2 */}
+            </span>
+          </div>
+        ),
       },
       {
-        title: "Người lập (ID)",
+        title: "Người lập",
         dataIndex: "user",
         key: "user",
-        render: (t: string) => <Tag>{t}</Tag>,
+        width: 180,
+        render: (u: IRecordCreator) => {
+          return (
+            <div className="flex flex-col items-start">
+              <Tag color="geekblue" className="mb-1">
+                {u?.idUser || "N/A"}
+              </Tag>
+              <span className="text-xs text-gray-600">
+                {u ? `${u.lastName} ${u.firstName}` : ""}
+              </span>
+            </div>
+          );
+        },
       },
       {
         title: "Điểm",
-        dataIndex: "rulePoint",
+        dataIndex: "rulePoint", // Field này đã map ở bước 2
+        width: 80,
+        align: "center" as const,
         render: (p: number) => (
-          <span className={p < 0 ? "text-red-500" : "text-green-500"}>{p}</span>
+          <span
+            className={
+              p < 0 ? "font-bold text-red-500" : "font-bold text-green-500"
+            }
+          >
+            {p > 0 ? `+${p}` : p}
+          </span>
         ),
       },
     ];
@@ -522,7 +585,7 @@ const ClassCompetitionChart: React.FC = () => {
       <Card
         size="small"
         title="Chi tiết các phiếu ghi nhận trong tuần"
-        className="bg-gray-50"
+        className="border-l-4 border-l-blue-400 bg-gray-50"
       >
         {record.validRecords.length > 0 ? (
           <Table
@@ -533,7 +596,7 @@ const ClassCompetitionChart: React.FC = () => {
             size="small"
           />
         ) : (
-          <div className="text-center italic text-gray-400">
+          <div className="py-4 text-center italic text-gray-400">
             Không có ghi nhận nào trong tuần này
           </div>
         )}
@@ -664,6 +727,7 @@ const ClassCompetitionChart: React.FC = () => {
           />
         </div>
       </Card>
+      <StudentEvaluationTables selectedWeek={selectedWeek} />
     </div>
   );
 };
