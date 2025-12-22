@@ -12,8 +12,6 @@ const LoginPage: React.FC = () => {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onFinish = async (values: any) => {
-    console.log("Dữ liệu form:", values);
-
     const data = await request(
       `${import.meta.env.VITE_SERVER_URL}/user/login`,
       {
@@ -26,7 +24,13 @@ const LoginPage: React.FC = () => {
     if (data) {
       localStorage.setItem("userInfo", JSON.stringify(data));
       messageApi.success("Đăng nhập thành công!");
-      navigate("/dashboard");
+      if (data.role === "admin") {
+        navigate("/dashboard");
+      } else if (data.role === "teacher" || data.role === "student") {
+        navigate("/home-1");
+      } else if (data.role === "user") {
+        navigate("/home-2");
+      }
     } else {
       messageApi.error(
         "Đăng nhập thất bại. Vui lòng kiểm tra lại Email và Mật khẩu!",

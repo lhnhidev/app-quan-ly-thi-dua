@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express';
 import User from '../models/User';
 import generateToken from '../utils/generateToken';
+import Class from '../models/Class';
+import RecordForm from '../models/RecordForm';
 
 export const index = (req: Request, res: Response) => {
   res.send('User Controller is working!');
@@ -68,7 +71,6 @@ export const createUser = async (req: Request, res: Response) => {
       message: 'Tạo người dùng thành công',
       data: userResponse,
     });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Create User Error:', error);
     return res.status(500).json({
@@ -94,6 +96,7 @@ export const loginUser = async (req: Request, res: Response) => {
         lastName: user.lastName,
         email: user.email,
         role: user.role,
+        followingClasses: user.followingClasses,
         token: generateToken(user._id.toString()),
       });
     } else {
@@ -197,5 +200,167 @@ export const getCoDo = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export const getTrackingReport = async (req: Request, res: Response) => {
+  try {
+    // 1. Nhận dữ liệu đầu vào
+    const { userId, startDate, endDate } = req.body;
+
+    if (!userId || !startDate || !endDate) {
+      return res.status(400).json({ message: 'Thiếu thông tin: userId, startDate, hoặc endDate' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // 2. Lấy thông tin User và danh sách lớp đang theo dõi (followingClasses)
+    const user = await User.findById(userId)
+      .select('-password') // Không lấy password
+      .populate('followingClasses') // Populate để lấy thông tin các lớp
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    // Lấy danh sách ID các lớp mà user này đang theo dõi
+    // user.followingClasses lúc này là mảng các object Class do đã populate
+    const followingClassesList = user.followingClasses as any[];
+    const targetClassIds = followingClassesList.map((c) => c._id);
+
+    if (targetClassIds.length === 0) {
+      return res.status(200).json({
+        userInfo: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        },
+        monitoredClasses: [],
+      });
+    }
+
+    // 3. QUERY SONG SONG (Parallel Execution)
+    // Query A: Lấy chi tiết các lớp (kèm Teacher và Students)
+    // Query B: Lấy TẤT CẢ phiếu điểm của các lớp này trong khoảng thời gian
+
+    const [classesDetails, recordForms] = await Promise.all([
+      Class.find({ _id: { $in: targetClassIds } })
+        .populate({
+          path: 'teacher',
+          select: 'firstName lastName idTeacher email', // Chọn trường cần lấy của Teacher
+        })
+        .populate({
+          path: 'students',
+          select: 'firstName lastName idStudent', // Chọn trường cần lấy của Student
+        })
+        .lean(),
+
+      RecordForm.find({
+        class: { $in: targetClassIds }, // Chỉ lấy record thuộc các lớp đang theo dõi
+        time: { $gte: start, $lte: end }, // Trong khoảng thời gian (dùng trường 'time' như schema)
+      })
+        .populate({
+          path: 'user', // Người lập phiếu
+          select: 'idUser firstName lastName',
+        })
+        .populate({
+          path: 'rule', // Lấy thông tin Rule (Schema là Role nhưng field là rule)
+          select: 'point content idRule',
+        })
+        .sort({ time: -1 }) // Mới nhất lên đầu
+        .lean(),
+    ]);
+
+    // 4. Xử lý dữ liệu (Mapping & Calculation)
+
+    const processedClasses = classesDetails.map((cls: any) => {
+      // A. Lọc ra các RecordForm thuộc về lớp hiện tại
+      const classRecords = recordForms.filter(
+        (r: any) => r.class.toString() === cls._id.toString()
+      );
+
+      // B. Tính tổng điểm của lớp
+      // Công thức: 300 + tổng điểm các phiếu
+      const totalClassPoint =
+        300 +
+        classRecords.reduce((sum, r: any) => {
+          const point = r.rule ? r.rule.point : 0; // r.rule là bảng Role
+          return sum + point;
+        }, 0);
+
+      // C. Xử lý danh sách học sinh trong lớp
+      const processedStudents = (cls.students || []).map((stu: any) => {
+        // Lọc ra các RecordForm thuộc về học sinh này
+        const studentRecords = classRecords.filter(
+          (r: any) => r.student && r.student.toString() === stu._id.toString()
+        );
+
+        // Tính tổng điểm học sinh
+        const totalStudentPoint = studentRecords.reduce((sum, r: any) => {
+          const point = r.rule ? r.rule.point : 0;
+          return sum + point;
+        }, 0);
+
+        // Format chi tiết phiếu điểm của học sinh
+        const formattedRecords = studentRecords.map((r: any) => ({
+          idRecordForm: r.idRecordForm,
+          time: r.time, // Thời gian lập
+          content: r.rule ? r.rule.content : 'Không có nội dung', // Nội dung từ Rule
+          point: r.rule ? r.rule.point : 0,
+          creator: r.user
+            ? {
+                idUser: r.user.idUser,
+                firstName: r.user.firstName,
+                lastName: r.user.lastName,
+              }
+            : null,
+        }));
+
+        return {
+          idStudent: stu.idStudent,
+          firstName: stu.firstName,
+          lastName: stu.lastName,
+          totalPoint: totalStudentPoint,
+          records: formattedRecords,
+        };
+      });
+
+      // D. Format thông tin GVCN
+      const homeroomTeacher = cls.teacher
+        ? {
+            idTeacher: cls.teacher.idTeacher,
+            firstName: cls.teacher.firstName,
+            lastName: cls.teacher.lastName,
+            email: cls.teacher.email,
+          }
+        : null;
+
+      return {
+        idClass: cls.idClass,
+        className: cls.name,
+        totalClassPoint: totalClassPoint,
+        homeroomTeacher: homeroomTeacher,
+        students: processedStudents,
+      };
+    });
+
+    // 5. Trả về kết quả
+    return res.status(200).json({
+      userInfo: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        email: user.email,
+        // Lưu ý: User Schema của bạn không có trường liên kết trực tiếp với Class (như học sinh)
+        // nên nếu user là Teacher/Student, cần query thêm bảng tương ứng nếu muốn lấy lớp chủ nhiệm/lớp đang học.
+        // Ở đây tôi trả về thông tin cơ bản của User.
+      },
+      monitoredClasses: processedClasses,
+    });
+  } catch (error: any) {
+    console.error('Error in getTrackingReport:', error);
+    return res.status(500).json({ message: 'Lỗi Server', error: error.message });
   }
 };

@@ -159,3 +159,27 @@ export const changeClass = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Server Error' });
   }
 };
+
+export const getClassById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const singleClass = await Class.findById(id)
+      .populate('teacher')
+      .populate({
+        path: 'students',
+        populate: {
+          path: 'recordForms',
+        },
+      })
+      .exec();
+
+    if (!singleClass) {
+      return res.status(404).json({ message: 'Không tìm thấy lớp học' });
+    }
+
+    res.status(200).json(singleClass);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};

@@ -155,6 +155,12 @@ const routeConfig: RouteObject[] = [
     ],
   },
   {
+    path: "/home-1",
+    element: (
+      <Loadable Component={lazy(() => import("../pages/TrackingReportPage"))} />
+    ),
+  },
+  {
     path: "*",
     element: (
       <Loadable Component={lazy(() => import("../pages/NotFoundPage"))} />
