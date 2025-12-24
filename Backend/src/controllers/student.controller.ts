@@ -175,3 +175,28 @@ export const getStudentsWithDetails = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'An unknown error occurred' });
   }
 };
+
+export const getStudentByIdClass = async (req: Request, res: Response) => {
+  try {
+    const { idClass } = req.params;
+
+    const students = await Student.find({ class: idClass })
+      .populate({
+        path: 'class',
+        populate: {
+          path: 'teacher',
+        },
+      })
+      .populate('recordForms')
+      .exec();
+
+    if (!students) {
+      return res.status(404).json({ message: 'Không tìm thấy học sinh nào trong lớp này' });
+    }
+
+    res.status(200).json(students);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};

@@ -8,6 +8,8 @@ import {
   modifyUser,
   getCoDo,
   getTrackingReport,
+  trackingRedFlag,
+  getUserById,
 } from '../controllers/user.controller';
 import { protect } from '../middlewares/protect';
 
@@ -19,8 +21,10 @@ router.use(protect);
 
 router.get('/', getUsers);
 router.post('/getTrackingReport', getTrackingReport);
+router.post('/trackingRedFlag', trackingRedFlag);
 router.get('/test', index);
 router.get('/co-do', getCoDo);
+router.get('/:id', getUserById);
 router.post('/createNewUser', createUser);
 router.delete('/deleteUser/:id', deleteUser);
 router.patch('/modifyUser/:id', modifyUser);

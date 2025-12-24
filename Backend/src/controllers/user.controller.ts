@@ -364,3 +364,218 @@ export const getTrackingReport = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Lỗi Server', error: error.message });
   }
 };
+
+export const trackingRedFlag = async (req: Request, res: Response) => {
+  try {
+    // 1. Nhận dữ liệu đầu vào
+    const { id, startDate, endDate } = req.body;
+
+    // Validate đầu vào
+    if (!id || !startDate || !endDate) {
+      return res.status(400).json({
+        message: 'Thiếu thông tin bắt buộc: id, startDate, endDate',
+      });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Kiểm tra tính hợp lệ của ngày
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ message: 'Định dạng ngày không hợp lệ' });
+    }
+
+    // 2. Lấy thông tin User (Cờ đỏ) và danh sách lớp được phân công
+    const user = await User.findById(id)
+      .select('firstName lastName email followingClasses')
+      .populate('followingClasses')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    const followingClassesList = (user.followingClasses || []) as any[];
+    const targetClassIds = followingClassesList.map((c) => c._id);
+
+    if (targetClassIds.length === 0) {
+      return res.status(200).json({
+        userInfo: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+        },
+        assignedClasses: [],
+      });
+    }
+
+    // 3. FETCH DỮ LIỆU SONG SONG
+    const [classesData, allRecords] = await Promise.all([
+      Class.find({ _id: { $in: targetClassIds } })
+        .populate({
+          path: 'teacher',
+          select: 'idTeacher firstName lastName email',
+        })
+        .populate({
+          path: 'students',
+          select: 'idStudent firstName lastName',
+        })
+        .lean(),
+
+      RecordForm.find({
+        class: { $in: targetClassIds },
+        time: { $gte: start, $lte: end },
+      })
+        .populate({
+          path: 'user',
+          select: 'idUser firstName lastName',
+        })
+        .populate({
+          path: 'student',
+          select: 'idStudent firstName lastName',
+        })
+        .populate({
+          path: 'rule',
+          select: 'idRule content point',
+        })
+        .sort({ time: -1 })
+        .lean(),
+    ]);
+
+    // 4. Xử lý logic tính toán và mapping dữ liệu
+    const processedClasses = classesData.map((cls: any) => {
+      const classIdStr = String(cls._id);
+
+      // Lọc ra tất cả các records thuộc về lớp này trong khoảng thời gian
+      const classRecords = allRecords.filter((r: any) => r.class && String(r.class) === classIdStr);
+
+      // --- BƯỚC 1: XỬ LÝ DANH SÁCH HỌC SINH TRƯỚC ---
+      const processedStudents = (cls.students || []).map((stu: any) => {
+        const studentIdStr = String(stu._id);
+
+        // Lấy các phiếu của học sinh này
+        const studentRecords = classRecords.filter(
+          (r: any) => r.student && String(r.student._id) === studentIdStr
+        );
+
+        // Tính tổng điểm của học sinh (An toàn với rule null)
+        const totalStudentPoint = studentRecords.reduce((sum, r: any) => {
+          const point = r.rule ? r.rule.point : 0;
+          return sum + point;
+        }, 0);
+
+        // Map thông tin phiếu điểm chi tiết
+        const formattedStudentRecords = studentRecords.map((r: any) => ({
+          idRecordForm: r.idRecordForm,
+          time: r.time,
+          content: r.rule ? r.rule.content : 'Nội dung đã bị xóa',
+          point: r.rule ? r.rule.point : 0,
+          creator: r.user
+            ? {
+                idUser: r.user.idUser,
+                firstName: r.user.firstName,
+                lastName: r.user.lastName,
+              }
+            : null,
+        }));
+
+        return {
+          idStudent: stu.idStudent,
+          firstName: stu.firstName,
+          lastName: stu.lastName,
+          totalPoint: totalStudentPoint,
+          records: formattedStudentRecords,
+        };
+      });
+
+      // --- BƯỚC 2: TÍNH TỔNG ĐIỂM LỚP DỰA TRÊN TỔNG ĐIỂM HỌC SINH ---
+      // Logic: Cộng tổng điểm của tất cả học sinh lại
+      const sumOfStudentPoints = processedStudents.reduce(
+        (sum: number, student: any) => sum + student.totalPoint,
+        0
+      );
+
+      // Logic: Cộng thêm điểm sàn (300)
+      const totalClassPoint = 300 + sumOfStudentPoints;
+
+      // --- BƯỚC 3: FORMAT DANH SÁCH RECORD CHUNG CỦA LỚP ---
+      const formattedClassRecords = classRecords.map((r: any) => ({
+        idRecordForm: r.idRecordForm,
+        createdAt: r.time,
+        creator: r.user
+          ? {
+              idUser: r.user.idUser,
+              firstName: r.user.firstName,
+              lastName: r.user.lastName,
+            }
+          : null,
+        violator: r.student
+          ? {
+              firstName: r.student.firstName,
+              lastName: r.student.lastName,
+              idStudent: r.student.idStudent,
+            }
+          : null,
+        violationContent: r.rule
+          ? {
+              idRule: r.rule.idRule,
+              content: r.rule.content,
+              point: r.rule.point,
+              creator: r.user
+                ? {
+                    idUser: r.user.idUser,
+                    firstName: r.user.firstName,
+                    lastName: r.user.lastName,
+                  }
+                : null,
+            }
+          : null,
+      }));
+
+      // --- TRẢ VỀ OBJECT LỚP ---
+      return {
+        idClass: cls.idClass,
+        className: cls.name,
+        totalClassPoint: totalClassPoint, // Đã cập nhật theo công thức mới
+        homeroomTeacher: cls.teacher
+          ? {
+              idTeacher: cls.teacher.idTeacher,
+              firstName: cls.teacher.firstName,
+              lastName: cls.teacher.lastName,
+              email: cls.teacher.email,
+            }
+          : null,
+        students: processedStudents,
+        classRecords: formattedClassRecords,
+      };
+    });
+
+    // 5. Trả về kết quả
+    return res.status(200).json({
+      userInfo: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+      assignedClasses: processedClasses,
+    });
+  } catch (error: any) {
+    console.error('Error in trackingRedFlag:', error);
+    return res.status(500).json({ message: 'Lỗi Server', error: error.message });
+  }
+};
+
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('-password')
+      .populate('followingClasses');
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Lỗi Server' });
+  }
+};

@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express';
 import Class from '../models/Class';
 import '../models/Teacher';
 import '../models/Student';
 import Teacher from '../models/Teacher';
 import Student from '../models/Student';
+import mongoose from 'mongoose';
+import RecordForm from '../models/RecordForm';
 
 export const getClasses = async (req: Request, res: Response) => {
   try {
@@ -181,5 +184,160 @@ export const getClassById = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export const renderClassInRedFlag = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // ID của lớp (DB _id)
+
+    // ---------------------------------------------------------
+    // 1. XỬ LÝ THỜI GIAN (Lấy tuần hiện tại: Thứ 2 -> Chủ Nhật)
+    // ---------------------------------------------------------
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0: CN, 1: T2, ..., 6: T7
+
+    // Tính khoảng cách đến thứ 2 gần nhất
+    // Nếu hôm nay là CN (0), thì thứ 2 là 6 ngày trước. Nếu không thì trừ đi (day - 1)
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() + diffToMonday);
+    startOfWeek.setHours(0, 0, 0, 0); // 00:00:00 Thứ 2
+
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999); // 23:59:59 Chủ Nhật
+
+    // ---------------------------------------------------------
+    // 2. TRUY VẤN DỮ LIỆU (Dùng Promise.all để tối ưu tốc độ)
+    // ---------------------------------------------------------
+
+    // Validate ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'ID lớp học không hợp lệ' });
+    }
+
+    const [classInfo, students, records] = await Promise.all([
+      // a. Lấy thông tin lớp và giáo viên
+      Class.findById(id)
+        .populate<{
+          teacher: { idTeacher: string; firstName: string; lastName: string; email: string };
+        }>({
+          path: 'teacher',
+          select: 'idTeacher firstName lastName email', // Chỉ lấy các trường cần thiết
+        })
+        .lean(),
+
+      // b. Lấy danh sách học sinh của lớp
+      Student.find({ class: id }).select('idStudent firstName lastName').lean(),
+
+      // c. Lấy các phiếu thi đua của lớp TRONG TUẦN NÀY
+      RecordForm.find({
+        class: id,
+        time: { $gte: startOfWeek, $lte: endOfWeek },
+      })
+        .populate<{
+          rule: { content: string; point: number; type: boolean };
+          user: { idUser: string; firstName: string; lastName: string };
+        }>([
+          {
+            path: 'rule', // Lấy thông tin thang điểm
+            select: 'content point type',
+          },
+          {
+            path: 'user', // Lấy thông tin người chấm (Cờ đỏ/GV)
+            select: 'idUser firstName lastName',
+          },
+        ])
+        .lean(),
+    ]);
+
+    if (!classInfo) {
+      return res.status(404).json({ message: 'Không tìm thấy lớp học' });
+    }
+
+    // ---------------------------------------------------------
+    // 3. TÍNH TOÁN ĐIỂM SỐ CỦA LỚP
+    // ---------------------------------------------------------
+    let totalPoint = 300; // Điểm sàn bắt đầu
+
+    records.forEach((record) => {
+      if (record.rule) {
+        // Kiểm tra loại điểm (type: true = cộng, type: false = trừ)
+        // Lưu ý: Nếu trong DB point luôn dương, ta cần xử lý dấu dựa trên type
+        const pointValue = (record.rule as any).point;
+
+        if ((record.rule as any).type === true) {
+          totalPoint += pointValue;
+        } else {
+          // Nếu là vi phạm (type false), trừ điểm
+          totalPoint -= pointValue;
+        }
+      }
+    });
+
+    // ---------------------------------------------------------
+    // 4. MAPPING RECORD VÀO TỪNG HỌC SINH
+    // ---------------------------------------------------------
+    const studentsWithRecords = students.map((student) => {
+      // Lọc ra các record của học sinh này từ danh sách records đã fetch ở trên
+      const studentRecords = records.filter((r) => r.student.toString() === student._id.toString());
+
+      // Format lại dữ liệu record theo yêu cầu
+      const formattedRecords = studentRecords.map((r) => {
+        // Xác định điểm hiển thị (có dấu - hoặc +)
+        const isBonus = r.rule?.type === true;
+        const pointVal = r.rule?.point || 0;
+        const displayPoint = isBonus ? pointVal : -pointVal;
+
+        return {
+          _id: r._id, // ID DB để truy cập
+          idRecordForm: r.idRecordForm, // Custom ID
+          content: r.rule?.content || 'Không xác định',
+          point: displayPoint,
+          createdAt: r.time, // Thời gian ghi nhận
+          creator: r.user
+            ? {
+                // Người lập phiếu
+                idUser: r.user.idUser,
+                firstName: r.user.firstName,
+                lastName: r.user.lastName,
+              }
+            : null,
+        };
+      });
+
+      return {
+        _id: student._id, // Để FE dùng làm key
+        idStudent: student.idStudent,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        recordForms: formattedRecords, // Danh sách lỗi/thưởng tuần này
+      };
+    });
+
+    // ---------------------------------------------------------
+    // 5. TRẢ VỀ KẾT QUẢ
+    // ---------------------------------------------------------
+    const responseData = {
+      idClass: classInfo.idClass,
+      className: classInfo.name,
+      point: totalPoint, // Tổng điểm tuần này (300 +/- ...)
+      teacher: classInfo.teacher
+        ? {
+            idTeacher: classInfo.teacher.idTeacher,
+            firstName: classInfo.teacher.firstName,
+            lastName: classInfo.teacher.lastName,
+            email: classInfo.teacher.email,
+          }
+        : null,
+      students: studentsWithRecords,
+    };
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error('Lỗi renderClassInRedFlag:', error);
+    return res.status(500).json({ message: 'Lỗi server xử lý dữ liệu lớp học' });
   }
 };
