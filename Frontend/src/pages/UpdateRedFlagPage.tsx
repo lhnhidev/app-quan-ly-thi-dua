@@ -422,6 +422,7 @@ const ERedFlagPage: React.FC = () => {
       <Table
         columns={recordColumns}
         dataSource={student.recordForms}
+        scroll={{ x: 800 }}
         pagination={false}
         rowKey="_id"
         size="small"
@@ -531,6 +532,7 @@ const ERedFlagPage: React.FC = () => {
               columns={studentColumns}
               dataSource={filteredStudents}
               rowKey="_id"
+              scroll={{ x: 800 }}
               expandable={{
                 expandedRowRender: expandedRowRender,
                 rowExpandable: () => true,
