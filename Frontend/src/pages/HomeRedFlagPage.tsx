@@ -436,9 +436,9 @@ const HomeRedFlagPage: React.FC = () => {
         {/* State: Chưa có dữ liệu */}
         {!data && !loading && (
           <div className="flex h-64 flex-col items-center justify-center text-gray-400">
-            <Typography.Text type="secondary" className="text-lg">
+            <div className="w-full text-center text-sm md:text-lg">
               Vui lòng chọn tuần và bấm "Tra cứu" để xem dữ liệu
-            </Typography.Text>
+            </div>
           </div>
         )}
 

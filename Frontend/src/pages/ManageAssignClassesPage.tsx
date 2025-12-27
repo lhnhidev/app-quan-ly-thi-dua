@@ -233,6 +233,7 @@ const ManageAssignClassesPage = () => {
             pagination={{
               pageSize: 10,
             }}
+            scroll={{ x: 800 }}
             bordered
             rowClassName="hover:bg-gray-50 transition-colors"
           />

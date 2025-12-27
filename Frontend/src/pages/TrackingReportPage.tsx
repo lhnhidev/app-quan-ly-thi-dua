@@ -336,9 +336,9 @@ const TrackingReportPage: React.FC = () => {
         {!reportData ? (
           <div className="flex h-64 flex-col items-center justify-center rounded-xl bg-white shadow-sm">
             <SearchOutlined className="mb-4 text-6xl text-gray-300" />
-            <p className="text-lg text-gray-500">
-              Vui lòng chọn tuần và ấn "Tra cứu" để xem kết quả.
-            </p>
+            <div className="w-full text-center text-sm text-gray-500 md:text-lg">
+              Vui lòng chọn tuần và bấm "Tra cứu" để xem dữ liệu
+            </div>
           </div>
         ) : (
           <div className="rounded-xl bg-white p-2 shadow-md">

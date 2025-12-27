@@ -465,6 +465,7 @@ const ResponseRecordTable: React.FC = () => {
           expandedRowRender,
           rowExpandable: () => true,
         }}
+        scroll={{ x: 800 }}
         pagination={{ defaultPageSize: 10, showSizeChanger: true }}
         rowKey="_id"
         bordered
