@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
 import {
@@ -12,6 +13,7 @@ import {
   message,
   Spin,
   Empty,
+  Modal,
 } from "antd";
 import {
   SearchOutlined,
@@ -19,18 +21,29 @@ import {
   TrophyOutlined,
   CalendarOutlined,
   TeamOutlined,
+  MessageOutlined,
+  HistoryOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
-import "dayjs/locale/vi"; // Import locale tiếng Việt
+import "dayjs/locale/vi";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import weekOfYear from "dayjs/plugin/weekOfYear";
+import { useAppContext } from "../context";
+
+// --- IMPORT CÁC COMPONENT CON ---
+import ResponseRecordForm from "../components/ResponseRecordForm";
+// GIẢ ĐỊNH: Import component ResponseRecordTable của bạn
+import ResponseRecordTable from "../components/ResponseRecordTable";
+// Nếu chưa có file này, hãy tạo file dummy hoặc bỏ comment dòng dưới để chạy thử:
+// const ResponseRecordTable = () => <Empty description="Component bảng lịch sử phản hồi sẽ hiển thị ở đây" />;
 
 // Cấu hình dayjs
 dayjs.extend(advancedFormat);
 dayjs.extend(weekOfYear);
 dayjs.locale("vi");
 
-// --- INTERFACES (Định nghĩa kiểu dữ liệu) ---
+// --- INTERFACES ---
 
 interface ICreator {
   idUser: string;
@@ -74,8 +87,6 @@ interface IUserInfo {
   lastName: string;
   role: string;
   email: string;
-  // idUser có thể không có trong response userInfo mẫu nhưng cần cho hiển thị Header
-  // Ta sẽ lấy từ localStorage nếu API không trả về
   idUser?: string;
 }
 
@@ -90,19 +101,20 @@ const TrackingReportPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<IReportResponse | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<Dayjs | null>(dayjs());
-
-  // State lưu thông tin user từ localStorage để hiển thị nếu chưa fetch
   const [localUser, setLocalUser] = useState<any>(null);
 
+  // --- STATE CHO PHẦN PHẢN HỒI ---
+  const [selectedRecordId, setSelectedRecordId] = useState<string>("");
+
+  const { showResponseModal, setShowResponseModal } = useAppContext();
+
   useEffect(() => {
-    // Lấy thông tin user từ localStorage khi mount
     const storedUser = localStorage.getItem("userInfo");
     if (storedUser) {
       setLocalUser(JSON.parse(storedUser));
     }
   }, []);
 
-  // Hàm gọi API
   const handleFetchReport = async () => {
     if (!selectedWeek) {
       message.warning("Vui lòng chọn tuần cần xem!");
@@ -116,10 +128,9 @@ const TrackingReportPage: React.FC = () => {
     }
 
     const parsedUser = JSON.parse(storedUserInfo);
-    const userId = parsedUser._id || parsedUser.id; // Lấy _id từ local
+    const userId = parsedUser._id || parsedUser.id;
     const token = parsedUser.token;
 
-    // Tính toán startDate (Thứ 2) và endDate (Chủ nhật) của tuần đã chọn
     const startDate = selectedWeek.startOf("week").toISOString();
     const endDate = selectedWeek.endOf("week").toISOString();
 
@@ -154,6 +165,12 @@ const TrackingReportPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Hàm xử lý khi ấn nút Phản hồi
+  const handleOpenResponse = (recordId: string) => {
+    setSelectedRecordId(recordId);
+    setShowResponseModal(true);
   };
 
   // --- CẤU HÌNH CỘT BẢNG HỌC SINH (Level 1) ---
@@ -201,7 +218,7 @@ const TrackingReportPage: React.FC = () => {
       title: "Thời gian",
       dataIndex: "time",
       key: "time",
-      width: 180,
+      width: 160,
       render: (time: string) => dayjs(time).format("DD/MM/YYYY HH:mm"),
     },
     {
@@ -212,14 +229,13 @@ const TrackingReportPage: React.FC = () => {
     {
       title: "Người ghi nhận",
       key: "creator",
-      width: 200,
+      width: 180,
       render: (_: any, record: IRecord) =>
         record.creator ? (
           <div className="justify-left flex gap-2">
             <div>
               {record.creator.lastName} {record.creator.firstName}
             </div>
-            <Tag color="blue">{record.creator.idUser}</Tag>
           </div>
         ) : (
           <span className="italic text-gray-400">Hệ thống</span>
@@ -229,7 +245,7 @@ const TrackingReportPage: React.FC = () => {
       title: "Điểm",
       dataIndex: "point",
       key: "point",
-      width: 100,
+      width: 80,
       align: "center" as const,
       render: (point: number) => (
         <Tag color={point >= 0 ? "success" : "error"}>
@@ -237,9 +253,25 @@ const TrackingReportPage: React.FC = () => {
         </Tag>
       ),
     },
+    {
+      title: "Hành động",
+      key: "action",
+      width: 100,
+      align: "center" as const,
+      render: (_: any, record: IRecord) => (
+        <Button
+          type="primary"
+          ghost
+          size="small"
+          icon={<MessageOutlined />}
+          onClick={() => handleOpenResponse(record.idRecordForm)}
+        >
+          Phản hồi
+        </Button>
+      ),
+    },
   ];
 
-  // Render bảng con (Records)
   const expandedRowRender = (record: IStudent) => {
     return (
       <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
@@ -259,34 +291,18 @@ const TrackingReportPage: React.FC = () => {
   };
 
   // --- RENDER GIAO DIỆN ---
-
-  // Thông tin hiển thị header (Ưu tiên lấy từ API, nếu chưa có thì lấy từ LocalStorage)
   const displayUser = reportData?.userInfo || localUser;
   const displayName = displayUser
     ? `${displayUser.lastName} ${displayUser.firstName}`
     : "...";
-  // Nếu API không trả idUser trong userInfo, ta lấy idUser từ localStorage
   const displayId = displayUser?.idUser || localUser?.idUser || "N/A";
 
-  return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      {/* 1. HEADER & FILTER */}
-      <Card className="mb-6 rounded-xl shadow-md">
-        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-          {/* Thông tin user */}
-          <div className="flex items-center gap-3">
-            <Avatar size={64} icon={<UserOutlined />} className="bg-blue-500" />
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">
-                Xin chào, {displayName}
-              </h2>
-              <Tag color="cyan" className="mt-1 px-2 py-0.5 text-sm">
-                MSSV/MGV: {displayId}
-              </Tag>
-            </div>
-          </div>
-
-          {/* Bộ lọc thời gian */}
+  // --- NỘI DUNG TAB 1: TRA CỨU ĐIỂM ---
+  const renderTrackingTab = () => (
+    <div className="space-y-4">
+      {/* Search Bar */}
+      <Card bordered={false} className="rounded-lg bg-white shadow-sm">
+        <div className="flex flex-col items-center gap-4 md:flex-row">
           <div className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 md:w-auto">
             <CalendarOutlined className="text-gray-500" />
             <span className="whitespace-nowrap font-medium">Chọn tuần:</span>
@@ -297,25 +313,27 @@ const TrackingReportPage: React.FC = () => {
               className="w-full md:w-64"
               placeholder="Chọn tuần học"
               format={(value) =>
-                `Tuần ${value.week()} (${value.startOf("week").format("DD/MM")} - ${value.endOf("week").format("DD/MM")})`
+                `Tuần ${value.week()} (${value
+                  .startOf("week")
+                  .format("DD/MM")} - ${value.endOf("week").format("DD/MM")})`
               }
             />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={handleFetchReport}
-              loading={loading}
-            >
-              Tra cứu
-            </Button>
           </div>
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
+            onClick={handleFetchReport}
+            loading={loading}
+            size="large"
+          >
+            Tra cứu kết quả
+          </Button>
         </div>
       </Card>
 
-      {/* 2. MAIN CONTENT (TABS) */}
+      {/* Result Display */}
       <Spin spinning={loading} tip="Đang tải dữ liệu...">
         {!reportData ? (
-          // State khi chưa có dữ liệu
           <div className="flex h-64 flex-col items-center justify-center rounded-xl bg-white shadow-sm">
             <SearchOutlined className="mb-4 text-6xl text-gray-300" />
             <p className="text-lg text-gray-500">
@@ -323,7 +341,6 @@ const TrackingReportPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          // State khi đã có dữ liệu
           <div className="rounded-xl bg-white p-2 shadow-md">
             {reportData.monitoredClasses.length === 0 ? (
               <Empty description="Bạn không có lớp theo dõi nào trong danh sách." />
@@ -340,9 +357,8 @@ const TrackingReportPage: React.FC = () => {
                   ),
                   children: (
                     <div className="p-4">
-                      {/* A. Thông tin Lớp & GVCN */}
+                      {/* Class Info */}
                       <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2">
-                        {/* Card Điểm Lớp */}
                         <Card className="border-blue-200 bg-blue-50">
                           <div className="flex items-center gap-4">
                             <div className="rounded-full bg-blue-100 p-3 text-blue-600">
@@ -358,8 +374,6 @@ const TrackingReportPage: React.FC = () => {
                             </div>
                           </div>
                         </Card>
-
-                        {/* Card Thông tin GVCN */}
                         <Card className="border-orange-200 bg-orange-50">
                           <div className="flex items-start gap-3">
                             <TeamOutlined className="mt-1 text-xl text-orange-500" />
@@ -375,9 +389,6 @@ const TrackingReportPage: React.FC = () => {
                                       {monitoredClass.homeroomTeacher.firstName}
                                     </span>
                                   </Descriptions.Item>
-                                  <Descriptions.Item label="Mã giáo viên">
-                                    {monitoredClass.homeroomTeacher.idTeacher}
-                                  </Descriptions.Item>
                                   <Descriptions.Item label="Email">
                                     {monitoredClass.homeroomTeacher.email}
                                   </Descriptions.Item>
@@ -392,7 +403,7 @@ const TrackingReportPage: React.FC = () => {
                         </Card>
                       </div>
 
-                      {/* B. Bảng danh sách học sinh */}
+                      {/* Student List Table */}
                       <div className="mt-4">
                         <h3 className="mb-4 border-l-4 border-blue-500 pl-2 text-lg font-bold text-gray-800">
                           Chi tiết học sinh
@@ -404,9 +415,8 @@ const TrackingReportPage: React.FC = () => {
                           pagination={{ pageSize: 20 }}
                           expandable={{
                             expandedRowRender: expandedRowRender,
-                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
                             rowExpandable: (_record) => true,
-                            expandRowByClick: true, // Cho phép click vào dòng để sổ xuống
+                            expandRowByClick: true,
                           }}
                           bordered
                           className="shadow-sm"
@@ -421,6 +431,74 @@ const TrackingReportPage: React.FC = () => {
           </div>
         )}
       </Spin>
+    </div>
+  );
+
+  // --- CẤU HÌNH CÁC TAB ---
+  const items = [
+    {
+      key: "1",
+      label: (
+        <span className="flex items-center gap-2">
+          <BarChartOutlined />
+          Tra cứu điểm
+        </span>
+      ),
+      children: renderTrackingTab(),
+    },
+    {
+      key: "2",
+      label: (
+        <span className="flex items-center gap-2">
+          <HistoryOutlined />
+          Lịch sử phản hồi
+        </span>
+      ),
+      children: (
+        <div className="rounded-xl bg-white p-6 shadow-md">
+          {/* Render component ResponseRecordTable ở đây */}
+          <ResponseRecordTable />
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
+      {/* 1. HEADER: USER INFO (Giữ nguyên trên cùng) */}
+      <Card className="mb-6 rounded-xl shadow-md">
+        <div className="flex items-center gap-3">
+          <Avatar size={64} icon={<UserOutlined />} className="bg-blue-500" />
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">
+              Xin chào, {displayName}
+            </h2>
+            <Tag color="cyan" className="mt-1 px-2 py-0.5 text-sm">
+              MSSV/MGV: {displayId}
+            </Tag>
+          </div>
+        </div>
+      </Card>
+
+      {/* 2. MAIN TABS AREA */}
+      <Tabs
+        defaultActiveKey="1"
+        items={items}
+        size="large"
+        className="tracking-page-tabs"
+      />
+
+      {/* --- MODAL HIỂN THỊ RESPONSE RECORD FORM --- */}
+      <Modal
+        title="Gửi phản hồi phiếu điểm"
+        open={showResponseModal}
+        onCancel={() => setShowResponseModal(false)}
+        footer={null}
+        destroyOnClose
+        width={600}
+      >
+        <ResponseRecordForm recordId={selectedRecordId} />
+      </Modal>
     </div>
   );
 };

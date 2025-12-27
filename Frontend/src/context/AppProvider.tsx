@@ -108,6 +108,8 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   const [openModifyTeacherForm, setOpenModifyTeacherForm] =
     useState<boolean>(false);
 
+  const [showResponseModal, setShowResponseModal] = useState(false);
+
   return (
     <AppContext.Provider
       value={{
@@ -169,6 +171,8 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
         setCurrentTeacher,
         openModifyTeacherForm,
         setOpenModifyTeacherForm,
+        showResponseModal,
+        setShowResponseModal,
       }}
     >
       {children}

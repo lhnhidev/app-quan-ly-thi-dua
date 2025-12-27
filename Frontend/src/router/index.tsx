@@ -152,6 +152,19 @@ const routeConfig: RouteObject[] = [
           />
         ),
       },
+      {
+        path: "/response",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageResponsePage"))}
+              />
+            }
+          />
+        ),
+      },
     ],
   },
   {

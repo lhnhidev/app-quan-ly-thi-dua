@@ -106,6 +106,8 @@ export interface AppContextType {
   setCurrentTeacher: React.Dispatch<React.SetStateAction<TeacherData | null>>;
   openModifyTeacherForm: boolean;
   setOpenModifyTeacherForm: React.Dispatch<React.SetStateAction<boolean>>;
+  showResponseModal: boolean;
+  setShowResponseModal: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
