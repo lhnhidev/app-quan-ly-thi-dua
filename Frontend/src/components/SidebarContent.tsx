@@ -54,7 +54,7 @@ const SidebarContent = () => {
         {
           key: "3",
           icon: <CalendarOutlined />,
-          label: "Phân công trực nhật",
+          label: "Phân công trực",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/assign-classes"),
         },

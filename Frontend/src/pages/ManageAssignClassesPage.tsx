@@ -198,7 +198,7 @@ const ManageAssignClassesPage = () => {
     <div>
       {contextHolder}
       <Header
-        title="Phân công trực nhật"
+        title="Phân công trực"
         subtitle="Quản lý và phân chia lớp học cho đội ngũ Cờ đỏ / Ban cán sự"
         logo={RiUserReceived2Line}
       />
