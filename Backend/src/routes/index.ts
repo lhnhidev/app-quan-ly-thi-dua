@@ -8,6 +8,7 @@ import recordFormRoutes from './recordForm.routes';
 import teacherRoutes from './teacher.routes';
 import assignClassesRoutes from './assignClasses.routes';
 import responseRoutes from './response.routes';
+import chatbotRoutes from './chatbot.routes';
 
 const router = (app: Application): void => {
   app.use('/user', userRoutes);
@@ -19,6 +20,7 @@ const router = (app: Application): void => {
   app.use('/teacher', teacherRoutes);
   app.use('/assign-classes', assignClassesRoutes);
   app.use('/response', responseRoutes);
+  app.use('/chat', chatbotRoutes);
 };
 
 export default router;

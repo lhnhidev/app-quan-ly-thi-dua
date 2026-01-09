@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import AddClassForm from "./components/Form/AddClassForm";
 import AddRecordForm from "./components/Form/AddRecordForm";
 import AddRoleForm from "./components/Form/AddRoleForm";
@@ -12,9 +13,12 @@ import ModifyTeacherForm from "./components/Form/ModifyTeacherForm";
 import ModifyUserForm from "./components/Form/ModifyUserForm";
 import { useAppContext } from "./context";
 import AppRoutes from "./router";
+import ChatComponent from "./components/ChatComponent";
 
 const App = () => {
   const { contextHolder, contextHolderMess } = useAppContext();
+
+  const location = useLocation();
 
   return (
     <div>
@@ -31,6 +35,7 @@ const App = () => {
       <ModifyUserForm></ModifyUserForm>
       <ModifyClassForm></ModifyClassForm>
       <ModifyTeacherForm></ModifyTeacherForm>
+      {["/"].includes(location.pathname) || <ChatComponent></ChatComponent>}
       {contextHolder}
       {contextHolderMess}
     </div>
