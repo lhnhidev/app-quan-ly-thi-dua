@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { BsRobot } from "react-icons/bs";
 import { AiOutlineClose, AiOutlineSend } from "react-icons/ai";
 import { Input, Button, Spin, message as antMessage } from "antd";
+import ReactMarkdown from "react-markdown";
 
 // Định nghĩa kiểu dữ liệu cho tin nhắn
 interface Message {
@@ -80,6 +81,7 @@ const ChatComponent: React.FC = () => {
 
     try {
       const token = JSON.parse(localStorage.getItem("userInfo") || "{}").token;
+      const role = JSON.parse(localStorage.getItem("userInfo") || "{}").role;
 
       const response = await fetch(`${SERVER_URL}/chat`, {
         method: "POST",
@@ -87,7 +89,7 @@ const ChatComponent: React.FC = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ message: userMsg.content }),
+        body: JSON.stringify({ message: userMsg.content, role }),
       });
 
       if (!response.ok) throw new Error("API Error");
@@ -112,7 +114,7 @@ const ChatComponent: React.FC = () => {
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end font-sans">
       {/* KHUNG CHAT */}
       {isOpen && (
-        <div className="animate-fade-in-up mb-4 flex h-[600px] w-[400px] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-white shadow-2xl">
+        <div className="animate-fade-in-up mb-4 flex h-[500px] w-[300px] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-white shadow-2xl sm:h-[600px] sm:w-[400px]">
           {/* Header */}
           <div className="flex h-14 shrink-0 items-center justify-between rounded-t-xl bg-[var(--primary-color)] px-4 text-white">
             <div className="flex select-none items-center gap-2 font-semibold">
@@ -146,7 +148,7 @@ const ChatComponent: React.FC = () => {
                       : "rounded-tl-none border border-[var(--border-color)] bg-white text-[var(--text-color)]"
                   }`}
                 >
-                  {msg.content}
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
                   {/* Hiệu ứng dấu nháy khi đang gõ ở tin nhắn cuối cùng của bot */}
                   {msg.role === "bot" &&
                     index === messages.length - 1 &&
