@@ -21,9 +21,19 @@ const useFetch = <T = any,>() => {
       }
 
       if (response.status === 401) {
-        localStorage.removeItem("userInfo");
-        window.location.replace("/login");
-        return null;
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: "Phiên đăng nhập không hợp lệ." }));
+        setError(errorData.message || "Phiên đăng nhập không hợp lệ.");
+
+        const isLoginPage = window.location.pathname === "/login";
+        if (!isLoginPage) {
+          localStorage.removeItem("userInfo");
+          window.location.replace("/login");
+          return null;
+        }
+
+        return errorData;
       }
 
       if (!response.ok) {

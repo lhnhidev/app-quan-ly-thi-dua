@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import generateToken from '../utils/generateToken';
 import Class from '../models/Class';
 import RecordForm from '../models/RecordForm';
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export const index = (req: Request, res: Response) => {
   res.send('User Controller is working!');
@@ -48,11 +51,13 @@ export const createUser = async (req: Request, res: Response) => {
     const classesToAssign = role === 'admin' ? [] : followingClasses || [];
 
     // 3. Tạo user mới
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = new User({
       firstName,
       lastName,
       email,
-      password, // Lưu ý: Nên hash password trước khi lưu (nếu model chưa có middleware pre-save hash)
+      password: hashedPassword,
       role,
       idUser,
       followingClasses: classesToAssign, // Thêm trường này vào
@@ -81,13 +86,33 @@ export const createUser = async (req: Request, res: Response) => {
 };
 
 export const loginUser = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const email = String(req.body?.email || '').trim();
+  const password = String(req.body?.password || '');
+
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email và mật khẩu là bắt buộc' });
+  }
 
   try {
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({
+      email: { $regex: new RegExp(`^${escapeRegex(email)}$`, 'i') },
+    }).select('+password');
 
-    // && (await bcrypt.compare(password, user.password))
-    if (user && user.password === password) {
+    let isValidPassword = false;
+    if (user) {
+      const storedPassword = typeof user.password === 'string' ? user.password : '';
+      const looksLikeBcryptHash = storedPassword.startsWith('$2a$')
+        || storedPassword.startsWith('$2b$')
+        || storedPassword.startsWith('$2y$');
+
+      if (looksLikeBcryptHash) {
+        isValidPassword = await bcrypt.compare(password, storedPassword);
+      } else {
+        isValidPassword = storedPassword === password;
+      }
+    }
+
+    if (user && isValidPassword) {
       // Đăng nhập thành công, tạo JWT và gửi về client
       res.json({
         _id: user._id,
@@ -166,8 +191,7 @@ export const modifyUser = async (req: Request, res: Response) => {
 
     // 3. Xử lý Mật khẩu (Chỉ cập nhật nếu có gửi lên)
     if (password && password.trim() !== '') {
-      user.password = password;
-      // Lưu ý: User Schema cần có middleware pre('save') để hash password
+      user.password = await bcrypt.hash(password, 10);
     }
 
     // Dùng .save() để kích hoạt middleware validation và hash password (nếu có đổi pass)
