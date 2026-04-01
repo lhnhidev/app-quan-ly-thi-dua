@@ -32,6 +32,7 @@ const SidebarContent = () => {
     if (path.startsWith("/role")) return "8";
     if (path.startsWith("/ranking")) return "9";
     if (path.startsWith("/response")) return "10";
+    if (path.startsWith("/settings")) return "11";
     // Mặc định là dashboard (key "1") cho trang chủ hoặc /dashboard
     return "1";
   };
@@ -119,6 +120,7 @@ const SidebarContent = () => {
           icon: <SettingOutlined />,
           label: "Cài đặt",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
+          onClick: () => navigate("/settings"),
         },
       ]}
     />

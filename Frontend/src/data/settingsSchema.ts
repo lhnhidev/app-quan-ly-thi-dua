@@ -1,0 +1,131 @@
+import type { SettingGroup } from "../types/settings";
+
+export const settingsSchema: SettingGroup[] = [
+  {
+    key: "system",
+    title: "Cau hinh he thong",
+    description: "Tuy chon van hanh chung cho toan bo he thong.",
+    fields: [
+      {
+        key: "maintenanceMode",
+        label: "Che do bao tri",
+        description: "Tam khoa truy cap nguoi dung khi can nang cap he thong.",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "timezone",
+        label: "Mui gio he thong",
+        description: "Mui gio dung de ghi nhan du lieu thi dua.",
+        type: "select",
+        defaultValue: "Asia/Ho_Chi_Minh",
+        options: [
+          { label: "GMT+7 (Viet Nam)", value: "Asia/Ho_Chi_Minh" },
+          { label: "UTC", value: "UTC" },
+        ],
+      },
+      {
+        key: "semesterName",
+        label: "Ten hoc ky hien tai",
+        description: "Dung cho bao cao va tong hop thi dua.",
+        type: "text",
+        defaultValue: "Hoc ky II 2025-2026",
+        placeholder: "Nhap ten hoc ky",
+      },
+    ],
+  },
+  {
+    key: "security",
+    title: "Bao mat va dang nhap",
+    description: "Cac quy tac an toan tai khoan va phien lam viec.",
+    fields: [
+      {
+        key: "sessionTimeout",
+        label: "Thoi gian het han phien (phut)",
+        description: "Tu dong dang xuat khi khong hoat dong.",
+        type: "number",
+        defaultValue: 60,
+        min: 15,
+        max: 720,
+        step: 15,
+      },
+      {
+        key: "forceStrongPassword",
+        label: "Bat buoc mat khau manh",
+        description: "Yeu cau mat khau co chu hoa, chu thuong, so va ky tu dac biet.",
+        type: "switch",
+        defaultValue: true,
+      },
+      {
+        key: "allowSingleDevice",
+        label: "Gioi han 1 thiet bi dang nhap",
+        description: "Moi tai khoan chi duoc dang nhap tren 1 thiet bi cung luc.",
+        type: "switch",
+        defaultValue: false,
+      },
+    ],
+  },
+  {
+    key: "competition",
+    title: "Thi dua va cham diem",
+    description: "Tham so lien quan den ghi nhan diem va xep hang.",
+    fields: [
+      {
+        key: "defaultStartPoint",
+        label: "Diem nen mac dinh cho lop",
+        description: "Diem khoi tao moi tuan truoc khi cong tru.",
+        type: "number",
+        defaultValue: 300,
+        min: 0,
+        max: 1000,
+        step: 10,
+      },
+      {
+        key: "lateEditWindowHours",
+        label: "Gioi han sua phieu sau khi tao (gio)",
+        description: "Cho phep sua phieu trong khoang thoi gian quy dinh.",
+        type: "number",
+        defaultValue: 24,
+        min: 1,
+        max: 168,
+        step: 1,
+      },
+      {
+        key: "autoLockWeeklyResult",
+        label: "Khoa ket qua tuan tu dong",
+        description: "Tu dong khoa bang diem cuoi tuan de tranh thay doi du lieu.",
+        type: "switch",
+        defaultValue: true,
+      },
+    ],
+  },
+  {
+    key: "notifications",
+    title: "Thong bao",
+    description: "Cau hinh canh bao va nhac nho cho giao vien, co do va quan tri.",
+    fields: [
+      {
+        key: "enableEmailNotification",
+        label: "Gui thong bao qua email",
+        description: "Gui thong bao khi co phieu moi hoac thay doi quan trong.",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "dailyDigestTime",
+        label: "Gio gui thong bao tong hop",
+        description: "Moc gio gui bao cao tong hop hang ngay.",
+        type: "text",
+        defaultValue: "17:30",
+        placeholder: "VD: 17:30",
+      },
+      {
+        key: "notifyOnNewResponse",
+        label: "Thong bao khi co phan hoi moi",
+        description: "Canh bao cho nguoi quan ly khi co phan hoi duoc gui len.",
+        type: "switch",
+        defaultValue: true,
+      },
+    ],
+  },
+];
