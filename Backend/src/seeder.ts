@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'node:dns';
 import Class from './models/Class';
 import RecordForm from './models/RecordForm';
 import Rule from './models/Role';
@@ -8,6 +9,15 @@ import Teacher from './models/Teacher';
 import User from './models/User';
 
 dotenv.config();
+
+const dnsServers = process.env.DNS_SERVERS
+  ?.split(',')
+  .map((server) => server.trim())
+  .filter(Boolean);
+
+if (dnsServers && dnsServers.length > 0) {
+  dns.setServers(dnsServers);
+}
 
 const seedData = async () => {
   try {

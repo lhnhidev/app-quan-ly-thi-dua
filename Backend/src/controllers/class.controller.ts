@@ -190,6 +190,7 @@ export const getClassById = async (req: Request, res: Response) => {
 export const renderClassInRedFlag = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // ID của lớp (DB _id)
+    const classId = Array.isArray(id) ? id[0] : id;
 
     // ---------------------------------------------------------
     // 1. XỬ LÝ THỜI GIAN (Lấy tuần hiện tại: Thứ 2 -> Chủ Nhật)
@@ -214,13 +215,13 @@ export const renderClassInRedFlag = async (req: Request, res: Response) => {
     // ---------------------------------------------------------
 
     // Validate ID
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!classId || !mongoose.Types.ObjectId.isValid(classId)) {
       return res.status(400).json({ message: 'ID lớp học không hợp lệ' });
     }
 
     const [classInfo, students, records] = await Promise.all([
       // a. Lấy thông tin lớp và giáo viên
-      Class.findById(id)
+      Class.findById(classId)
         .populate<{
           teacher: { idTeacher: string; firstName: string; lastName: string; email: string };
         }>({
@@ -230,11 +231,11 @@ export const renderClassInRedFlag = async (req: Request, res: Response) => {
         .lean(),
 
       // b. Lấy danh sách học sinh của lớp
-      Student.find({ class: id }).select('idStudent firstName lastName').lean(),
+      Student.find({ class: classId }).select('idStudent firstName lastName').lean(),
 
       // c. Lấy các phiếu thi đua của lớp TRONG TUẦN NÀY
       RecordForm.find({
-        class: id,
+        class: classId,
         time: { $gte: startOfWeek, $lte: endOfWeek },
       })
         .populate<{
