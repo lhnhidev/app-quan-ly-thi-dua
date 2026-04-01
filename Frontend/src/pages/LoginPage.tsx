@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 const { Title, Text } = Typography;
 
 const LoginPage: React.FC = () => {
-  const { request } = useFetch();
+  const { request, error } = useFetch();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -26,7 +26,7 @@ const LoginPage: React.FC = () => {
 
     setLoading(false);
 
-    if (data) {
+    if (data?.token) {
       localStorage.setItem("userInfo", JSON.stringify(data));
       messageApi.success("Đăng nhập thành công!");
       if (data.role === "admin") {
@@ -38,7 +38,7 @@ const LoginPage: React.FC = () => {
       }
     } else {
       messageApi.error(
-        "Đăng nhập thất bại. Vui lòng kiểm tra lại Email và Mật khẩu!",
+        data?.message || error || "Đăng nhập thất bại. Vui lòng thử lại.",
       );
     }
   };
