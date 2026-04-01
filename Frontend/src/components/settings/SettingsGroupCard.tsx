@@ -39,15 +39,26 @@ const SettingsGroupCard = ({ group }: SettingsGroupCardProps) => {
   return (
     <Card
       title={group.title}
-      className="h-full rounded-2xl border border-gray-200 shadow-sm"
+      className="h-full rounded-2xl shadow-sm"
+      style={{
+        backgroundColor: "var(--surface-1)",
+        borderColor: "var(--border-color)",
+      }}
     >
-      <Text type="secondary" className="mb-4 block">
+      <Text type="secondary" className="mb-4 block" style={{ color: "var(--text-muted)" }}>
         {group.description}
       </Text>
 
       <div className="space-y-4">
         {group.fields.map((field) => (
-          <div key={field.key} className="rounded-xl bg-gray-50 p-4">
+          <div
+            key={field.key}
+            className="rounded-xl p-4"
+            style={{
+              backgroundColor: "var(--surface-2)",
+              border: "1px solid var(--border-color)",
+            }}
+          >
             <Form.Item
               label={field.label}
               name={[group.key, field.key]}
@@ -56,7 +67,7 @@ const SettingsGroupCard = ({ group }: SettingsGroupCardProps) => {
             >
               {renderFieldInput(field)}
             </Form.Item>
-            <Text type="secondary" className="text-xs">
+            <Text type="secondary" className="text-xs" style={{ color: "var(--text-muted)" }}>
               {field.description}
             </Text>
           </div>

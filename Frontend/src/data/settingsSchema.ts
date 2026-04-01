@@ -25,6 +25,18 @@ export const settingsSchema: SettingGroup[] = [
         ],
       },
       {
+        key: "themeMode",
+        label: "Giao dien he thong",
+        description: "Chon Light mode, Dark mode hoac tu dong theo he thong.",
+        type: "select",
+        defaultValue: "system",
+        options: [
+          { label: "Theo he thong", value: "system" },
+          { label: "Light mode", value: "light" },
+          { label: "Dark mode", value: "dark" },
+        ],
+      },
+      {
         key: "semesterName",
         label: "Ten hoc ky hien tai",
         description: "Dung cho bao cao va tong hop thi dua.",
