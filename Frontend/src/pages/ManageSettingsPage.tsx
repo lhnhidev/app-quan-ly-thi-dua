@@ -46,7 +46,7 @@ const ManageSettingsPage = () => {
   };
 
   const onSubmit = () => {
-    messageApi.success("Da ap dung cai dat giao dien. Cac tuy chon khac se duoc trien khai sau.");
+    messageApi.success("Đã áp dụng cài đặt giao diện. Các tùy chọn khác sẽ được triển khai sau.");
   };
 
   return (
@@ -61,11 +61,11 @@ const ManageSettingsPage = () => {
         }}
       >
         <Title level={3} className="!mb-1">
-          Cai dat he thong
+          Cài đặt hệ thống
         </Title>
         <Text type="secondary" style={{ color: "var(--text-muted)" }}>
-          Khu vuc tong hop cac tuy chon quan tri. Hien tai chi mo phong giao dien,
-          chua luu vao server.
+          Khu vực tổng hợp các tùy chọn quản trị. Hiện tại chỉ mô phỏng giao diện,
+          chưa lưu vào server.
         </Text>
       </div>
 
@@ -94,9 +94,9 @@ const ManageSettingsPage = () => {
             border: "1px solid var(--border-color)",
           }}
         >
-          <Button onClick={onReset}>Khoi phuc mac dinh</Button>
+          <Button onClick={onReset}>Khôi phục mặc định</Button>
           <Button type="primary" onClick={onSubmit}>
-            Luu cai dat
+            Lưu cài đặt
           </Button>
         </div>
       </Form>

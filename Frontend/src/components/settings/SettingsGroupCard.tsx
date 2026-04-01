@@ -16,7 +16,7 @@ const renderFieldInput = (field: SettingField) => {
     return (
       <Select
         options={field.options}
-        placeholder={field.placeholder || "Chon gia tri"}
+        placeholder={field.placeholder || "Chọn giá trị"}
       />
     );
   }
@@ -32,7 +32,7 @@ const renderFieldInput = (field: SettingField) => {
     );
   }
 
-  return <Input placeholder={field.placeholder || "Nhap gia tri"} />;
+  return <Input placeholder={field.placeholder || "Nhập giá trị"} />;
 };
 
 const SettingsGroupCard = ({ group }: SettingsGroupCardProps) => {
