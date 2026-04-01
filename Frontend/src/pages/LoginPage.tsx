@@ -1,5 +1,6 @@
-import React from "react";
-import { Form, Input, Button, Card, Typography, message } from "antd";
+import React, { useState } from "react";
+import { Form, Input, Button, Typography, message } from "antd";
+import { LockOutlined, MailOutlined } from "@ant-design/icons";
 import useFetch from "../hooks/useFetch";
 import { useNavigate } from "react-router-dom";
 
@@ -9,9 +10,11 @@ const LoginPage: React.FC = () => {
   const { request } = useFetch();
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onFinish = async (values: any) => {
+    setLoading(true);
     const data = await request(
       `${import.meta.env.VITE_SERVER_URL}/user/login`,
       {
@@ -20,6 +23,8 @@ const LoginPage: React.FC = () => {
         body: JSON.stringify(values),
       },
     );
+
+    setLoading(false);
 
     if (data) {
       localStorage.setItem("userInfo", JSON.stringify(data));
@@ -39,73 +44,115 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    // Toàn bộ màn hình, nền gradient
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)] p-5">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4">
       {contextHolder}
-      <h2 className="mb-5 text-3xl uppercase text-white">Quản lý Thi đua</h2>
-
-      <Card className="w-full max-w-md rounded-lg shadow-xl">
-        <div className="mb-6 text-center">
-          <Title level={3} className="!mb-0">
-            Chào mừng trở lại
+      
+      {/* Main Container */}
+      <div className="w-full max-w-md">
+        {/* Header */}
+        <div className="mb-12 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[var(--primary-color)] to-[var(--secondary-color)]">
+              <span className="text-2xl font-bold text-white">🎓</span>
+            </div>
+          </div>
+          <Title level={2} className="!mb-2 text-gray-800">
+            Quản lý Thi đua
           </Title>
-          <Text type="secondary">
-            Vui lòng đăng nhập vào tài khoản bên dưới.
+          <Text className="text-gray-500">
+            Hệ thống quản lý cuộc thi học sinh trung học
           </Text>
         </div>
 
-        <Form
-          layout="vertical"
-          initialValues={{ remember: true }}
-          onFinish={onFinish}
-          size="large"
-        >
-          <Form.Item
-            name="email"
-            rules={[
-              { required: true, message: "Vui lòng nhập Email!" },
-              { type: "email", message: "Email không hợp lệ!" },
-            ]}
-            className="mb-6"
-          >
-            <Input placeholder="Nhập email..." />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
-            className="mb-4"
-          >
-            <Input.Password placeholder="Nhập mật khẩu..." />
-          </Form.Item>
-
-          <div className="mb-6 text-center">
-            <Text type="secondary">Chưa có tài khoản? </Text>
-            <a
-              href="#"
-              className="font-medium text-blue-500 hover:text-blue-600"
-            >
-              Liên hệ với admin
-            </a>
+        {/* Login Form Card */}
+        <div className="rounded-2xl bg-white p-8 shadow-lg backdrop-blur-sm">
+          <div className="mb-8">
+            <Title level={4} className="!mb-1 text-gray-800">
+              Chào mừng bạn!
+            </Title>
+            <Text className="block text-gray-500">
+              Đăng nhập bằng email và mật khẩu của bạn
+            </Text>
           </div>
 
-          <div className="flex items-center justify-between">
-            <a
-              href="/forgot-password"
-              className="text-blue-500 hover:text-blue-600"
+          <Form
+            layout="vertical"
+            onFinish={onFinish}
+            size="large"
+            autoComplete="off"
+          >
+            {/* Email Field */}
+            <Form.Item
+              name="email"
+              rules={[
+                { required: true, message: "Vui lòng nhập Email!" },
+                { type: "email", message: "Email không hợp lệ!" },
+              ]}
+              className="!mb-6"
             >
-              Khôi phục mật khẩu
-            </a>
+              <Input
+                prefix={
+                  <MailOutlined className="mr-2 text-[var(--primary-color)]" />
+                }
+                placeholder="your@email.com"
+                className="rounded-lg border-gray-200 px-4 py-2"
+              />
+            </Form.Item>
+
+            {/* Password Field */}
+            <Form.Item
+              name="password"
+              rules={[{ required: true, message: "Vui lòng nhập mật khẩu!" }]}
+              className="!mb-2"
+            >
+              <Input.Password
+                prefix={
+                  <LockOutlined className="mr-2 text-[var(--primary-color)]" />
+                }
+                placeholder="Nhập mật khẩu của bạn"
+                className="rounded-lg border-gray-200 px-4 py-2"
+              />
+            </Form.Item>
+
+            {/* Forgot Password Link */}
+            <div className="mb-6 flex justify-end">
+              <a
+                href="/forgot-password"
+                className="text-sm text-[var(--primary-color)] hover:underline"
+              >
+                Quên mật khẩu?
+              </a>
+            </div>
+
+            {/* Login Button */}
             <Button
               type="primary"
               htmlType="submit"
-              className="h-10 bg-[var(--primary-color)] px-8"
+              loading={loading}
+              block
+              size="large"
+              className="!h-12 !rounded-lg !bg-gradient-to-r !from-[var(--primary-color)] !to-[var(--secondary-color)] !text-base !font-semibold !text-white !shadow-md !transition-all hover:!shadow-lg"
             >
-              Đăng nhập
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
-          </div>
-        </Form>
-      </Card>
+
+            {/* Help Section */}
+            <div className="mt-6 border-t border-gray-100 pt-6 text-center">
+              <Text className="block text-sm text-gray-600">
+                Chưa có tài khoản?
+              </Text>
+              <Text className="mt-2 block text-sm text-gray-500">
+                Liên hệ với quản trị viên để tạo tài khoản
+              </Text>
+            </div>
+          </Form>
+        </div>
+
+        {/* Footer Info */}
+        <div className="mt-8 text-center text-xs text-gray-400">
+          <p>Dành cho học sinh và giáo viên trung học cơ sở</p>
+        </div>
+      </div>
     </div>
   );
 };
