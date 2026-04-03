@@ -1,0 +1,143 @@
+import type { SettingGroup } from "../types/settings";
+
+export const settingsSchema: SettingGroup[] = [
+  {
+    key: "system",
+    title: "Cấu hình hệ thống",
+    description: "Tùy chọn vận hành chung cho toàn bộ hệ thống.",
+    fields: [
+      {
+        key: "maintenanceMode",
+        label: "Chế độ bảo trì",
+        description: "Tạm khóa truy cập người dùng khi cần nâng cấp hệ thống.",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "timezone",
+        label: "Múi giờ hệ thống",
+        description: "Múi giờ dùng để ghi nhận dữ liệu thi đua.",
+        type: "select",
+        defaultValue: "Asia/Ho_Chi_Minh",
+        options: [
+          { label: "GMT+7 (Việt Nam)", value: "Asia/Ho_Chi_Minh" },
+          { label: "UTC", value: "UTC" },
+        ],
+      },
+      {
+        key: "themeMode",
+        label: "Giao diện hệ thống",
+        description: "Chọn giao diện sáng, tối hoặc tự động theo hệ thống.",
+        type: "select",
+        defaultValue: "system",
+        options: [
+          { label: "Theo hệ thống", value: "system" },
+          { label: "Chế độ sáng", value: "light" },
+          { label: "Chế độ tối", value: "dark" },
+        ],
+      },
+      {
+        key: "semesterName",
+        label: "Tên học kỳ hiện tại",
+        description: "Dùng cho báo cáo và tổng hợp thi đua.",
+        type: "text",
+        defaultValue: "Học kỳ II 2025-2026",
+        placeholder: "Nhập tên học kỳ",
+      },
+    ],
+  },
+  {
+    key: "security",
+    title: "Bảo mật và đăng nhập",
+    description: "Các quy tắc an toàn tài khoản và phiên làm việc.",
+    fields: [
+      {
+        key: "sessionTimeout",
+        label: "Thời gian hết hạn phiên (phút)",
+        description: "Tự động đăng xuất khi không hoạt động.",
+        type: "number",
+        defaultValue: 60,
+        min: 15,
+        max: 720,
+        step: 15,
+      },
+      {
+        key: "forceStrongPassword",
+        label: "Bắt buộc mật khẩu mạnh",
+        description: "Yêu cầu mật khẩu có chữ hoa, chữ thường, số và ký tự đặc biệt.",
+        type: "switch",
+        defaultValue: true,
+      },
+      {
+        key: "allowSingleDevice",
+        label: "Giới hạn 1 thiết bị đăng nhập",
+        description: "Mỗi tài khoản chỉ được đăng nhập trên 1 thiết bị cùng lúc.",
+        type: "switch",
+        defaultValue: false,
+      },
+    ],
+  },
+  {
+    key: "competition",
+    title: "Thi đua và chấm điểm",
+    description: "Tham số liên quan đến ghi nhận điểm và xếp hạng.",
+    fields: [
+      {
+        key: "defaultStartPoint",
+        label: "Điểm nền mặc định cho lớp",
+        description: "Điểm khởi tạo mỗi tuần trước khi cộng trừ.",
+        type: "number",
+        defaultValue: 300,
+        min: 0,
+        max: 1000,
+        step: 10,
+      },
+      {
+        key: "lateEditWindowHours",
+        label: "Giới hạn sửa phiếu sau khi tạo (giờ)",
+        description: "Cho phép sửa phiếu trong khoảng thời gian quy định.",
+        type: "number",
+        defaultValue: 24,
+        min: 1,
+        max: 168,
+        step: 1,
+      },
+      {
+        key: "autoLockWeeklyResult",
+        label: "Khóa kết quả tuần tự động",
+        description: "Tự động khóa bảng điểm cuối tuần để tránh thay đổi dữ liệu.",
+        type: "switch",
+        defaultValue: true,
+      },
+    ],
+  },
+  {
+    key: "notifications",
+    title: "Thông báo",
+    description: "Cấu hình cảnh báo và nhắc nhở cho giáo viên, cờ đỏ và quản trị.",
+    fields: [
+      {
+        key: "enableEmailNotification",
+        label: "Gửi thông báo qua email",
+        description: "Gửi thông báo khi có phiếu mới hoặc thay đổi quan trọng.",
+        type: "switch",
+        defaultValue: false,
+      },
+      {
+        key: "dailyDigestTime",
+        label: "Giờ gửi thông báo tổng hợp",
+        description: "Mốc giờ gửi báo cáo tổng hợp hằng ngày.",
+        type: "text",
+        defaultValue: "17:30",
+        placeholder: "VD: 17:30",
+      },
+      {
+        key: "notifyOnNewResponse",
+        label: "Thông báo khi có phản hồi mới",
+        description: "Cảnh báo cho người quản lý khi có phản hồi được gửi lên.",
+        type: "switch",
+        defaultValue: true,
+      },
+    ],
+  },
+];

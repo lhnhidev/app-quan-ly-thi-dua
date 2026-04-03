@@ -1,7 +1,15 @@
 import { message, Modal } from "antd";
 import { AppContext } from "./AppContext";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { TeacherData } from "../components/Table/TableTeacher";
+import type { ThemeMode } from "../types/theme";
+import {
+  THEME_MODE_STORAGE_KEY,
+  applyThemeMode,
+  getStoredThemeMode,
+  resolveTheme,
+  subscribeSystemTheme,
+} from "../utils/themeMode";
 
 interface Teacher {
   _id: string;
@@ -49,6 +57,26 @@ interface User {
 }
 
 const AppProvider = ({ children }: { children: ReactNode }) => {
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getStoredThemeMode());
+  const [resolvedTheme, setResolvedTheme] = useState(() => resolveTheme(getStoredThemeMode()));
+
+  useEffect(() => {
+    localStorage.setItem(THEME_MODE_STORAGE_KEY, themeMode);
+    applyThemeMode(themeMode);
+    setResolvedTheme(resolveTheme(themeMode));
+  }, [themeMode]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSystemTheme(() => {
+      if (themeMode === "system") {
+        applyThemeMode("system");
+        setResolvedTheme(resolveTheme("system"));
+      }
+    });
+
+    return unsubscribe;
+  }, [themeMode]);
+
   const [ping, setPing] = useState<string>("Hello from app context!");
   const [location, setLocation] = useState<
     "dashboard" | "student" | "classe" | "role" | "user"
@@ -113,6 +141,9 @@ const AppProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AppContext.Provider
       value={{
+        themeMode,
+        setThemeMode,
+        resolvedTheme,
         ping,
         setPing,
         location,

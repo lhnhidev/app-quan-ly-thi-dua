@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import type { TeacherData } from "../components/Table/TableTeacher";
+import type { ResolvedTheme, ThemeMode } from "../types/theme";
 
 interface Teacher {
   _id: string;
@@ -38,6 +39,9 @@ interface ClassInfo2 {
 }
 
 export interface AppContextType {
+  themeMode: ThemeMode;
+  setThemeMode: React.Dispatch<React.SetStateAction<ThemeMode>>;
+  resolvedTheme: ResolvedTheme;
   ping: string;
   setPing: React.Dispatch<React.SetStateAction<string>>;
   location: "dashboard" | "student" | "classe" | "role" | "user";

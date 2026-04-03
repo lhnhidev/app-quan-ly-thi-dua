@@ -6,11 +6,111 @@
   --primary-color: #1f5ca9;
   --secondary-color: #06a8d8;
   --bg-color: #f8fbff;
+  --surface-1: #ffffff;
+  --surface-2: #f4f7fb;
+  --surface-3: #ecf2f9;
   --text-color: #2c3e50;
+  --text-muted: #66778a;
   --border-color: #e0eef7;
   --success-color: #52c41a;
   --warning-color: #faad14;
   --error-color: #f5222d;
+}
+
+[data-theme="dark"] {
+  --primary-color: #5ea6ff;
+  --secondary-color: #35d4ff;
+  --bg-color: #0f141a;
+  --surface-1: #131a22;
+  --surface-2: #1a2430;
+  --surface-3: #222f3c;
+  --text-color: #ffffff;
+  --text-muted: #ffffff;
+  --border-color: #2a3442;
+  --success-color: #6bd968;
+  --warning-color: #f3bf52;
+  --error-color: #ff6b6b;
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] label,
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6,
+[data-theme="dark"] li,
+[data-theme="dark"] th,
+[data-theme="dark"] td {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-slate-400,
+[data-theme="dark"] .text-slate-500,
+[data-theme="dark"] .text-slate-600,
+[data-theme="dark"] .text-slate-700,
+[data-theme="dark"] .text-slate-800 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .ant-typography,
+[data-theme="dark"] .ant-typography-secondary,
+[data-theme="dark"] .ant-form-item-label > label,
+[data-theme="dark"] .ant-menu-title-content,
+[data-theme="dark"] .ant-table,
+[data-theme="dark"] .ant-table-cell,
+[data-theme="dark"] .ant-select-selection-item,
+[data-theme="dark"] .ant-input,
+[data-theme="dark"] .ant-input-number-input {
+  color: var(--text-color) !important;
+}
+
+/* Dark mode: neutralize hardcoded light Tailwind backgrounds used across pages */
+[data-theme="dark"] .bg-white {
+  background-color: var(--surface-1) !important;
+}
+
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--surface-2) !important;
+}
+
+[data-theme="dark"] .bg-gray-200 {
+  background-color: var(--surface-3) !important;
+}
+
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+
+/* Dark mode: remove white/blue glow shadows under elements */
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow,
+[data-theme="dark"] .shadow-md,
+[data-theme="dark"] .shadow-lg,
+[data-theme="dark"] .shadow-xl,
+[data-theme="dark"] .shadow-2xl {
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .ant-btn,
+[data-theme="dark"] .ant-card,
+[data-theme="dark"] .ant-dropdown,
+[data-theme="dark"] .ant-popover,
+[data-theme="dark"] .ant-modal-content,
+[data-theme="dark"] .ant-select-dropdown,
+[data-theme="dark"] .ant-picker-dropdown {
+  box-shadow: none !important;
 }
 
 @font-face {
@@ -47,7 +147,9 @@
 body {
   font-family: "Netflix Sans";
   /* font-size: var(--font-size); */
+  background-color: var(--bg-color);
   color: var(--text-color);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* ===== Scrollbar kiểu Obsidian ===== */

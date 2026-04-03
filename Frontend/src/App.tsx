@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import { ConfigProvider, theme } from "antd";
 import AddClassForm from "./components/Form/AddClassForm";
 import AddRecordForm from "./components/Form/AddRecordForm";
 import AddRoleForm from "./components/Form/AddRoleForm";
@@ -16,29 +17,45 @@ import AppRoutes from "./router";
 import ChatComponent from "./components/ChatComponent";
 
 const App = () => {
-  const { contextHolder, contextHolderMess } = useAppContext();
+  const { contextHolder, contextHolderMess, resolvedTheme } = useAppContext();
 
   const location = useLocation();
 
   return (
-    <div>
-      <AppRoutes />
-      <AddStudentsForm></AddStudentsForm>
-      <ModifyStudentForm></ModifyStudentForm>
-      <AddRoleForm></AddRoleForm>
-      <ModifyRoleForm></ModifyRoleForm>
-      <AddRecordForm></AddRecordForm>
-      <ModifyRecordForm></ModifyRecordForm>
-      <AddClassForm></AddClassForm>
-      <AddTeacherForm></AddTeacherForm>
-      <AddUserForm></AddUserForm>
-      <ModifyUserForm></ModifyUserForm>
-      <ModifyClassForm></ModifyClassForm>
-      <ModifyTeacherForm></ModifyTeacherForm>
-      {["/"].includes(location.pathname) || <ChatComponent></ChatComponent>}
-      {contextHolder}
-      {contextHolderMess}
-    </div>
+    <ConfigProvider
+      theme={{
+        algorithm:
+          resolvedTheme === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        token:
+          resolvedTheme === "dark"
+            ? {
+                colorText: "#ffffff",
+                colorTextSecondary: "#ffffff",
+                colorTextTertiary: "#ffffff",
+                colorTextQuaternary: "#ffffff",
+              }
+            : undefined,
+      }}
+    >
+      <div>
+        <AppRoutes />
+        <AddStudentsForm></AddStudentsForm>
+        <ModifyStudentForm></ModifyStudentForm>
+        <AddRoleForm></AddRoleForm>
+        <ModifyRoleForm></ModifyRoleForm>
+        <AddRecordForm></AddRecordForm>
+        <ModifyRecordForm></ModifyRecordForm>
+        <AddClassForm></AddClassForm>
+        <AddTeacherForm></AddTeacherForm>
+        <AddUserForm></AddUserForm>
+        <ModifyUserForm></ModifyUserForm>
+        <ModifyClassForm></ModifyClassForm>
+        <ModifyTeacherForm></ModifyTeacherForm>
+        {["/"].includes(location.pathname) || <ChatComponent></ChatComponent>}
+        {contextHolder}
+        {contextHolderMess}
+      </div>
+    </ConfigProvider>
   );
 };
 export default App;
