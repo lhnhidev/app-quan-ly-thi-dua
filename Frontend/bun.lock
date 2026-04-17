@@ -1,10 +1,12 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "thi-dua-thcs",
       "dependencies": {
         "@ant-design/charts": "^2.6.6",
+        "@ant-design/icons": "^5.5.1",
         "antd": "^5.29.1",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
