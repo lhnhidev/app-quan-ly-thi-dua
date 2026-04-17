@@ -162,6 +162,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   const undoCountdownTimersRef = useRef<Record<string, number>>({});
   const selectedUserIdRef = useRef<string>("");
   const myIdRef = useRef<string>("");
+  const isMobileChatView = isMobile && Boolean(selectedUser);
 
   const syncPeerFromMessage = (payload: SocialMessage) => {
     const peer = payload.sender._id === myIdRef.current ? payload.receiver : payload.sender;
@@ -684,19 +685,29 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   return (
     <div>
       {contextHolder}
-      <Header
-        title={mode === "admin" ? "Mạng xã hội nội bộ" : "Mạng xã hội người dùng"}
-        subtitle={
-          mode === "admin"
-            ? "Tra cứu người dùng, trạng thái online/offline và nhắn tin realtime"
-            : "Kết nối với quản trị viên và những người dùng khác trong hệ thống"
-        }
-        logo={RiWechatLine}
-      />
+      {!isMobileChatView && (
+        <Header
+          title={mode === "admin" ? "Mạng xã hội nội bộ" : "Mạng xã hội người dùng"}
+          subtitle={
+            mode === "admin"
+              ? "Tra cứu người dùng, trạng thái online/offline và nhắn tin realtime"
+              : "Kết nối với quản trị viên và những người dùng khác trong hệ thống"
+          }
+          logo={RiWechatLine}
+        />
+      )}
 
-      <div className="grid h-[calc(100vh-210px)] grid-cols-1 gap-4 p-4 md:grid-cols-[360px_1fr]">
+      <div
+        className={`grid grid-cols-1 md:grid-cols-[360px_1fr] ${
+          isMobileChatView ? "h-[calc(100dvh-64px)] gap-0 p-0" : "h-[calc(100vh-210px)] gap-4 p-4"
+        }`}
+      >
         {(!isMobile || !selectedUser) && (
-          <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-1)]">
+          <div
+            className={`flex h-full flex-col overflow-hidden bg-[var(--surface-1)] ${
+              isMobileChatView ? "rounded-none border-0" : "rounded-xl border border-[var(--border-color)]"
+            }`}
+          >
           <div className="border-b border-[var(--border-color)] p-3">
             <Input
               placeholder="Tìm theo tên, lớp, mã HS/GV, email..."
