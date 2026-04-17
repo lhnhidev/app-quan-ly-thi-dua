@@ -58,7 +58,7 @@ const RedFlagPage: React.FC = () => {
               </p>
             </div>
 
-            <Button icon={<TeamOutlined />} onClick={() => navigate("/social")}>
+            <Button icon={<TeamOutlined />} onClick={() => navigate("/social-user")}>
               Mạng xã hội nội bộ
             </Button>
           </div>

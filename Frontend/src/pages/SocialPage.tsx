@@ -135,7 +135,13 @@ const UNDO_RECALL_DURATION_SECONDS = 5;
 const buildFullName = (firstName?: string, lastName?: string) =>
   `${lastName || ""} ${firstName || ""}`.trim();
 
-const SocialPage = () => {
+type SocialPageMode = "admin" | "user";
+
+interface SocialPageProps {
+  mode?: SocialPageMode;
+}
+
+const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   const [messageApi, contextHolder] = message.useMessage();
   const [users, setUsers] = useState<SocialUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -650,8 +656,12 @@ const SocialPage = () => {
     <div>
       {contextHolder}
       <Header
-        title="Mạng xã hội nội bộ"
-        subtitle="Tra cứu người dùng, trạng thái online/offline và nhắn tin realtime"
+        title={mode === "admin" ? "Mạng xã hội nội bộ" : "Mạng xã hội người dùng"}
+        subtitle={
+          mode === "admin"
+            ? "Tra cứu người dùng, trạng thái online/offline và nhắn tin realtime"
+            : "Kết nối với quản trị viên và những người dùng khác trong hệ thống"
+        }
         logo={RiWechatLine}
       />
 

@@ -333,7 +333,7 @@ const TrackingReportPage: React.FC = () => {
           <Button
             icon={<TeamOutlined />}
             size="large"
-            onClick={() => navigate("/social")}
+            onClick={() => navigate("/social-user")}
           >
             Mạng xã hội nội bộ
           </Button>

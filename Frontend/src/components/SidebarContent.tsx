@@ -125,7 +125,7 @@ const SidebarContent = () => {
           icon: <WechatOutlined />,
           label: "Mạng xã hội nội bộ",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
-          onClick: () => navigate("/social"),
+          onClick: () => navigate("/social-admin"),
         },
         {
           key: "12",
