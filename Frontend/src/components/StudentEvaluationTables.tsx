@@ -208,7 +208,10 @@ const StudentEvaluationTables: React.FC<Props> = ({ selectedWeek }) => {
                 </span>
               }
               className="h-full border-t-4 border-t-green-500 shadow-md"
-              headStyle={{ backgroundColor: "#f6ffed" }}
+              headStyle={{
+                backgroundColor: "var(--surface-2)",
+                borderBottom: "1px solid var(--border-color)",
+              }}
             >
               {commendStudents.length > 0 ? (
                 <Table
@@ -233,7 +236,10 @@ const StudentEvaluationTables: React.FC<Props> = ({ selectedWeek }) => {
                 </span>
               }
               className="h-full border-t-4 border-t-red-500 shadow-md"
-              headStyle={{ backgroundColor: "#fff1f0" }}
+              headStyle={{
+                backgroundColor: "var(--surface-2)",
+                borderBottom: "1px solid var(--border-color)",
+              }}
             >
               {concernStudents.length > 0 ? (
                 <Table

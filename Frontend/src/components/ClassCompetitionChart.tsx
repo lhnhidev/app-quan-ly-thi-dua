@@ -668,7 +668,7 @@ const ClassCompetitionChart: React.FC = () => {
           </Button>
         </div>
         {_searchResult && (
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="rounded-lg border border-[var(--border-color)] bg-[var(--surface-1)] p-4 shadow-sm">
             <div className="mt-1 text-2xl font-bold text-green-600">
               {_searchResult.calculatedPoint} điểm
             </div>

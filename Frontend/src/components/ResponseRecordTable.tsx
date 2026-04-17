@@ -345,9 +345,9 @@ const ResponseRecordTable: React.FC = () => {
       <div
         style={{
           padding: "16px",
-          background: "#f9f9f9",
+          background: "var(--surface-2)",
           borderRadius: "8px",
-          border: "1px solid #e0e0e0",
+          border: "1px solid var(--border-color)",
         }}
       >
         <Descriptions
@@ -414,10 +414,11 @@ const ResponseRecordTable: React.FC = () => {
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--surface-1)",
         padding: 20,
         borderRadius: 8,
         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        border: "1px solid var(--border-color)",
       }}
     >
       <div
