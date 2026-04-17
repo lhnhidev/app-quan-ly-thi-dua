@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import User from '../models/User';
+import SocialMessage from '../models/SocialMessage';
 
 let io: SocketIOServer | null = null;
 const onlineSocketCount = new Map<string, number>();
@@ -26,6 +27,46 @@ const updatePresence = async (userId: string, isOnline: boolean) => {
   });
 };
 
+const syncDeliveredMessages = async (receiverId: string) => {
+  const pending = await SocialMessage.find({
+    receiver: receiverId,
+    delivered: false,
+  })
+    .select('_id sender')
+    .lean();
+
+  if (pending.length === 0) return;
+
+  const now = new Date();
+  const messageIds = pending.map((item: any) => item._id);
+
+  await SocialMessage.updateMany(
+    { _id: { $in: messageIds } },
+    {
+      delivered: true,
+      deliveredAt: now,
+    }
+  );
+
+  const groupedBySender = new Map<string, string[]>();
+
+  pending.forEach((item: any) => {
+    const senderId = String(item.sender);
+    const current = groupedBySender.get(senderId) || [];
+    current.push(String(item._id));
+    groupedBySender.set(senderId, current);
+  });
+
+  groupedBySender.forEach((ids, senderId) => {
+    io?.to(userRoom(senderId)).emit('social:message-status', {
+      fromUserId: receiverId,
+      status: 'delivered',
+      messageIds: ids,
+      updatedAt: now,
+    });
+  });
+};
+
 const attachSocialSocketEvents = (socket: Socket) => {
   const user = (socket as any).user;
   const userId = String(user?._id || '');
@@ -43,6 +84,10 @@ const attachSocialSocketEvents = (socket: Socket) => {
   if (currentCount === 0) {
     updatePresence(userId, true).catch((error) => {
       console.error('Update presence (online) error:', error);
+    });
+
+    syncDeliveredMessages(userId).catch((error) => {
+      console.error('Sync delivered messages error:', error);
     });
   }
 

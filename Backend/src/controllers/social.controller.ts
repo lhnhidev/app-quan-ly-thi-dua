@@ -105,6 +105,36 @@ export const getMessagesByPeer = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Thiếu peerId' });
     }
 
+    const unreadIncoming = await SocialMessage.find({
+      sender: peerId,
+      receiver: currentUser._id,
+      seen: false,
+    })
+      .select('_id')
+      .lean();
+
+    if (unreadIncoming.length > 0) {
+      const now = new Date();
+      const unreadIds = unreadIncoming.map((item: any) => item._id);
+
+      await SocialMessage.updateMany(
+        { _id: { $in: unreadIds } },
+        {
+          seen: true,
+          seenAt: now,
+          delivered: true,
+          deliveredAt: now,
+        }
+      );
+
+      emitToUser(String(peerId), 'social:message-status', {
+        fromUserId: String(currentUser._id),
+        status: 'read',
+        messageIds: unreadIds.map((id: any) => String(id)),
+        updatedAt: now,
+      });
+    }
+
     const messages = await SocialMessage.find({
       $or: [
         { sender: currentUser._id, receiver: peerId },
@@ -115,15 +145,6 @@ export const getMessagesByPeer = async (req: Request, res: Response) => {
       .populate('sender', 'firstName lastName email avatar avatarUrl role idUser')
       .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
       .lean();
-
-    await SocialMessage.updateMany(
-      {
-        sender: peerId,
-        receiver: currentUser._id,
-        seen: false,
-      },
-      { seen: true }
-    );
 
     return res.status(200).json(messages);
   } catch (error) {
@@ -190,7 +211,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Không thể tự gửi tin nhắn cho chính mình' });
     }
 
-    const receiver = await User.findById(toUserId).select('_id');
+    const receiver = await User.findById(toUserId).select('_id isOnline');
     if (!receiver) {
       return res.status(404).json({ message: 'Người nhận không tồn tại' });
     }
@@ -202,12 +223,18 @@ export const sendMessage = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Tin nhắn cần có nội dung text hoặc tệp đính kèm' });
     }
 
+    const deliveredNow = Boolean((receiver as any).isOnline);
+    const now = new Date();
+
     const message = await SocialMessage.create({
       sender: currentUser._id,
       receiver: toUserId,
       text,
       attachments,
+      delivered: deliveredNow,
+      deliveredAt: deliveredNow ? now : null,
       seen: false,
+      seenAt: null,
     });
 
     const populated = await SocialMessage.findById(message._id)
@@ -217,6 +244,15 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     emitToUser(String(toUserId), 'social:message', populated);
     emitToUser(String(currentUser._id), 'social:message', populated);
+
+    if (deliveredNow) {
+      emitToUser(String(currentUser._id), 'social:message-status', {
+        fromUserId: String(toUserId),
+        status: 'delivered',
+        messageIds: [String(message._id)],
+        updatedAt: now,
+      });
+    }
 
     return res.status(201).json(populated);
   } catch (error) {

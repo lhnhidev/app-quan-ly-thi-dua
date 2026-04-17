@@ -14,7 +14,10 @@ export type SocialMessageType = {
   receiver: mongoose.Types.ObjectId;
   text?: string;
   attachments: MessageAttachment[];
+  delivered: boolean;
+  deliveredAt?: Date | null;
   seen: boolean;
+  seenAt?: Date | null;
 };
 
 const AttachmentSchema = new Schema<MessageAttachment>(
@@ -53,9 +56,21 @@ const SocialMessageSchema = new Schema<SocialMessageType>(
       type: [AttachmentSchema],
       default: [],
     },
+    delivered: {
+      type: Boolean,
+      default: false,
+    },
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
     seen: {
       type: Boolean,
       default: false,
+    },
+    seenAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

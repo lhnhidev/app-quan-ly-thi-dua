@@ -74,8 +74,17 @@ interface SocialMessage {
   };
   text?: string;
   attachments: MessageAttachment[];
+  delivered: boolean;
+  deliveredAt?: string;
   seen: boolean;
+  seenAt?: string;
   createdAt: string;
+}
+
+interface MessageStatusPayload {
+  fromUserId: string;
+  status: "delivered" | "read";
+  messageIds: string[];
 }
 
 const roleLabel: Record<string, string> = {
@@ -107,6 +116,12 @@ const formatTime = (date: string) => {
     hour: "2-digit",
     minute: "2-digit",
   });
+};
+
+const getMyMessageStatusLabel = (message: SocialMessage) => {
+  if (message.seen) return "Đã đọc";
+  if (message.delivered) return "Đã nhận";
+  return "Đã gửi";
 };
 
 const SocialPage = () => {
@@ -232,6 +247,10 @@ const SocialPage = () => {
           if (existed) return prev;
           return [...prev, payload];
         });
+
+        if (payload.sender._id === selectedUser?._id && payload.receiver._id === myId) {
+          fetchMessages(selectedUser._id);
+        }
       }
 
       fetchUsers(searchText);
@@ -248,6 +267,33 @@ const SocialPage = () => {
               }
             : user,
         ),
+      );
+    });
+
+    socket.on("social:message-status", (payload: MessageStatusPayload) => {
+      setMessages((prev) =>
+        prev.map((messageItem) => {
+          if (!payload.messageIds.includes(messageItem._id)) {
+            return messageItem;
+          }
+
+          if (payload.status === "read") {
+            return {
+              ...messageItem,
+              delivered: true,
+              seen: true,
+            };
+          }
+
+          if (payload.status === "delivered") {
+            return {
+              ...messageItem,
+              delivered: true,
+            };
+          }
+
+          return messageItem;
+        }),
       );
     });
 
@@ -483,6 +529,7 @@ const SocialPage = () => {
 
                             <div className={`mt-1 text-right text-[11px] ${mine ? "text-white/80" : "text-[var(--text-muted)]"}`}>
                               {formatTime(msg.createdAt)}
+                              {mine ? ` • ${getMyMessageStatusLabel(msg)}` : ""}
                             </div>
                           </div>
                         </div>
