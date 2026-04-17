@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Avatar,
@@ -117,9 +117,11 @@ const UserProfilePage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>("");
 
   useEffect(() => {
     const userInfoString = localStorage.getItem("userInfo");
@@ -208,6 +210,8 @@ const UserProfilePage = () => {
     return `https://ui-avatars.com/api/?name=${text}&background=1f5ca9&color=fff&size=128`;
   }, [fullName, profile?.avatar, profile?.avatarUrl]);
 
+  const displayedAvatarUrl = avatarPreviewUrl || avatarUrl;
+
   const roleLabel = useMemo(() => {
     if (!profile) return "-";
     return roleMeta[profile.role]?.label || profile.role;
@@ -232,28 +236,39 @@ const UserProfilePage = () => {
 
     if (!file) {
       setSelectedAvatarFile(null);
+      setAvatarPreviewUrl("");
       return;
     }
 
     if (!file.type.startsWith("image/")) {
       messageApi.error("Vui lòng chọn file ảnh hợp lệ");
       setSelectedAvatarFile(null);
+      setAvatarPreviewUrl("");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
       messageApi.error("Ảnh đại diện không được vượt quá 5MB");
       setSelectedAvatarFile(null);
+      setAvatarPreviewUrl("");
       return;
     }
 
+    const previewUrl = URL.createObjectURL(file);
     setSelectedAvatarFile(file);
+    setAvatarPreviewUrl(previewUrl);
   };
 
-  const handleUploadAvatar = async () => {
+  const handleChooseAvatar = () => {
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
+      avatarInputRef.current.click();
+    }
+  };
+
+  const uploadSelectedAvatar = async () => {
     if (!selectedAvatarFile) {
-      messageApi.warning("Vui lòng chọn ảnh trước khi tải lên");
-      return;
+      return null;
     }
 
     const userInfoString = localStorage.getItem("userInfo");
@@ -278,8 +293,11 @@ const UserProfilePage = () => {
       setProfile(result.data);
       updateLocalUserInfo(result.data);
       setSelectedAvatarFile(null);
-      messageApi.success(result.message || "Cập nhật ảnh đại diện thành công");
+      setAvatarPreviewUrl("");
+      return result.data;
     }
+
+    return null;
   };
 
   const handleUpdateProfile = async (values: {
@@ -287,6 +305,16 @@ const UserProfilePage = () => {
     lastName: string;
     email: string;
   }) => {
+    let avatarUpdated = false;
+
+    if (selectedAvatarFile) {
+      const avatarResult = await uploadSelectedAvatar();
+      if (!avatarResult) {
+        return;
+      }
+      avatarUpdated = true;
+    }
+
     const userInfoString = localStorage.getItem("userInfo");
     const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
     const token = userInfo?.token;
@@ -306,9 +334,21 @@ const UserProfilePage = () => {
     if (result?.data) {
       setProfile(result.data);
       updateLocalUserInfo(result.data);
-      messageApi.success(result.message || "Cập nhật thông tin thành công");
+      messageApi.success(
+        avatarUpdated
+          ? "Cập nhật thông tin và ảnh đại diện thành công"
+          : result.message || "Cập nhật thông tin thành công",
+      );
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreviewUrl) {
+        URL.revokeObjectURL(avatarPreviewUrl);
+      }
+    };
+  }, [avatarPreviewUrl]);
 
   const handleChangePassword = async (values: {
     currentPassword: string;
@@ -482,13 +522,14 @@ const UserProfilePage = () => {
                         <div className="mb-5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-2)] p-4">
                           <Text strong>Ảnh đại diện</Text>
                           <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
-                            <Avatar size={56} src={avatarUrl} icon={<UserOutlined />} />
+                            <Avatar size={56} src={displayedAvatarUrl} icon={<UserOutlined />} />
                             <div className="flex-1">
                               <input
+                                ref={avatarInputRef}
                                 type="file"
                                 accept="image/*"
                                 onChange={handleAvatarSelect}
-                                className="block w-full text-sm"
+                                className="hidden"
                               />
                               <Text type="secondary" className="!text-xs">
                                 Định dạng ảnh: JPG, PNG, WEBP. Dung lượng tối đa 5MB.
@@ -504,8 +545,7 @@ const UserProfilePage = () => {
                             <Button
                               type="primary"
                               icon={<CloudUploadOutlined />}
-                              loading={uploadingAvatar}
-                              onClick={handleUploadAvatar}
+                              onClick={handleChooseAvatar}
                               style={{ backgroundColor: "var(--primary-color)" }}
                             >
                               Upload ảnh
@@ -549,7 +589,7 @@ const UserProfilePage = () => {
                           <Button
                             type="primary"
                             htmlType="submit"
-                            loading={updatingProfile}
+                            loading={updatingProfile || uploadingAvatar}
                             icon={<SafetyOutlined />}
                             style={{ backgroundColor: "var(--primary-color)" }}
                           >

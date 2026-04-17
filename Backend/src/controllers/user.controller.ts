@@ -828,8 +828,29 @@ export const uploadMyAvatar = async (req: Request, res: Response) => {
 
     const cloudinary = getCloudinary();
 
-    if (user.avatarPublicId) {
-      await cloudinary.uploader.destroy(user.avatarPublicId, {
+    const derivePublicIdFromUrl = (url: string) => {
+      try {
+        const parsed = new URL(url);
+        const path = parsed.pathname;
+        const marker = '/upload/';
+        const markerIndex = path.indexOf(marker);
+
+        if (markerIndex === -1) return '';
+
+        let afterUpload = path.slice(markerIndex + marker.length);
+        afterUpload = afterUpload.replace(/^v\d+\//, '');
+
+        return afterUpload.replace(/\.[^.]+$/, '');
+      } catch {
+        return '';
+      }
+    };
+
+    const previousPublicId =
+      user.avatarPublicId || derivePublicIdFromUrl(user.avatarUrl || user.avatar || '');
+
+    if (previousPublicId) {
+      await cloudinary.uploader.destroy(previousPublicId, {
         resource_type: 'image',
       });
     }
