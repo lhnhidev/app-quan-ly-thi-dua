@@ -130,6 +130,7 @@ const getMyMessageStatusLabel = (message: SocialMessage) => {
 };
 
 const getUndoMessageKey = (messageId: string) => `social-recall-undo-${messageId}`;
+const UNDO_RECALL_DURATION_SECONDS = 5;
 
 const SocialPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
@@ -143,9 +144,11 @@ const SocialPage = () => {
   const [sending, setSending] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [myId, setMyId] = useState<string>("");
+  const [undoCountdownMap, setUndoCountdownMap] = useState<Record<string, number>>({});
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const undoCountdownTimersRef = useRef<Record<string, number>>({});
 
   const updateMessageInState = (payload: SocialMessage) => {
     setMessages((prev) => prev.map((msg) => (msg._id === payload._id ? payload : msg)));
@@ -153,14 +156,60 @@ const SocialPage = () => {
 
   const closeUndoRecallNotice = (messageId: string) => {
     messageApi.destroy(getUndoMessageKey(messageId));
+
+    const timerId = undoCountdownTimersRef.current[messageId];
+    if (timerId) {
+      window.clearInterval(timerId);
+      delete undoCountdownTimersRef.current[messageId];
+    }
+
+    setUndoCountdownMap((prev) => {
+      if (prev[messageId] === undefined) return prev;
+      const next = { ...prev };
+      delete next[messageId];
+      return next;
+    });
   };
 
   const showUndoRecallNotice = (messageId: string) => {
+    const existTimer = undoCountdownTimersRef.current[messageId];
+    if (existTimer) {
+      window.clearInterval(existTimer);
+      delete undoCountdownTimersRef.current[messageId];
+    }
+
+    setUndoCountdownMap((prev) => ({
+      ...prev,
+      [messageId]: UNDO_RECALL_DURATION_SECONDS,
+    }));
+
+    const timerId = window.setInterval(() => {
+      setUndoCountdownMap((prev) => {
+        const current = prev[messageId];
+        if (current === undefined) return prev;
+
+        const nextValue = Math.max(0, current - 1);
+        const next = { ...prev, [messageId]: nextValue };
+
+        if (nextValue <= 0) {
+          const currentTimer = undoCountdownTimersRef.current[messageId];
+          if (currentTimer) {
+            window.clearInterval(currentTimer);
+            delete undoCountdownTimersRef.current[messageId];
+          }
+        }
+
+        return next;
+      });
+    }, 1000);
+    undoCountdownTimersRef.current[messageId] = timerId;
+
     const key = getUndoMessageKey(messageId);
+    const countdown = undoCountdownMap[messageId] ?? UNDO_RECALL_DURATION_SECONDS;
 
     const config: ArgsProps = {
       key,
-      duration: 5,
+      duration: UNDO_RECALL_DURATION_SECONDS,
       content: (
         <div className="flex items-center gap-2">
           <span>Tin nhắn đã được thu hồi</span>
@@ -172,7 +221,7 @@ const SocialPage = () => {
               void undoRecallMessage(messageId);
             }}
           >
-            Hoàn tác
+            Hoàn tác ({countdown})
           </Button>
         </div>
       ),
@@ -326,6 +375,39 @@ const SocialPage = () => {
   }, [selectedUser?._id, token]);
 
   useEffect(() => {
+    const messageIds = Object.keys(undoCountdownMap);
+    if (messageIds.length === 0) return;
+
+    messageIds.forEach((messageId) => {
+      const key = getUndoMessageKey(messageId);
+      const countdown = undoCountdownMap[messageId];
+
+      const config: ArgsProps = {
+        key,
+        duration: countdown,
+        content: (
+          <div className="flex items-center gap-2">
+            <span>Tin nhắn đã được thu hồi</span>
+            <Button
+              size="small"
+              type="link"
+              className="!h-auto !p-0"
+              onClick={() => {
+                void undoRecallMessage(messageId);
+              }}
+            >
+              Hoàn tác ({countdown})
+            </Button>
+          </div>
+        ),
+      };
+
+      messageApi.open(config);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [undoCountdownMap]);
+
+  useEffect(() => {
     if (!token) return;
 
     const socket = io(import.meta.env.VITE_SERVER_URL, {
@@ -412,6 +494,10 @@ const SocialPage = () => {
 
     return () => {
       messageApi.destroy();
+      Object.values(undoCountdownTimersRef.current).forEach((timerId) => {
+        window.clearInterval(timerId);
+      });
+      undoCountdownTimersRef.current = {};
       socket.disconnect();
       socketRef.current = null;
     };
