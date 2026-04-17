@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import User from '../models/User';
 import Student from '../models/Student';
 import Teacher from '../models/Teacher';
@@ -72,14 +73,45 @@ export const getSocialUsers = async (req: Request, res: Response) => {
   try {
     const currentUser = (req as any).user;
     const q = normalize(String(req.query.q || ''));
+    const currentUserObjectId = new mongoose.Types.ObjectId(String(currentUser._id));
 
-    const [users, students, teachers] = await Promise.all([
+    const [users, students, teachers, conversationSnapshots] = await Promise.all([
       User.find({ _id: { $ne: currentUser._id } })
         .select('firstName lastName email role idUser avatar avatarUrl isOnline lastSeenAt')
         .lean(),
       Student.find({}).populate('class', 'name').lean(),
       Teacher.find({}).populate('idClass', 'name').lean(),
+      SocialMessage.aggregate([
+        {
+          $match: {
+            $or: [{ sender: currentUserObjectId }, { receiver: currentUserObjectId }],
+          },
+        },
+        {
+          $project: {
+            createdAt: 1,
+            peerId: {
+              $cond: [
+                { $eq: ['$sender', currentUserObjectId] },
+                '$receiver',
+                '$sender',
+              ],
+            },
+          },
+        },
+        {
+          $group: {
+            _id: '$peerId',
+            lastInteractedAt: { $max: '$createdAt' },
+          },
+        },
+      ]),
     ]);
+
+    const lastInteractedByPeer = new Map<string, Date>();
+    for (const snapshot of conversationSnapshots) {
+      lastInteractedByPeer.set(String(snapshot._id), snapshot.lastInteractedAt);
+    }
 
     const studentById = new Map<string, any>();
     for (const item of students) {
@@ -116,6 +148,7 @@ export const getSocialUsers = async (req: Request, res: Response) => {
         isOnline: Boolean(user.isOnline),
         lastSeenAt: user.lastSeenAt || user.updatedAt || null,
         avatarUrl: ensureAvatar(user),
+        lastInteractedAt: lastInteractedByPeer.get(String(user._id)) || null,
       };
     });
 
@@ -137,6 +170,10 @@ export const getSocialUsers = async (req: Request, res: Response) => {
       : mapped;
 
     filtered.sort((a, b) => {
+      const timeA = a.lastInteractedAt ? new Date(a.lastInteractedAt).getTime() : 0;
+      const timeB = b.lastInteractedAt ? new Date(b.lastInteractedAt).getTime() : 0;
+
+      if (timeA !== timeB) return timeB - timeA;
       if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
       return a.fullName.localeCompare(b.fullName);
     });

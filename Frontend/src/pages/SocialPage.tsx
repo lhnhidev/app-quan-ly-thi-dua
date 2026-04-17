@@ -41,6 +41,7 @@ interface SocialUser {
   className?: string;
   isOnline: boolean;
   lastSeenAt?: string;
+  lastInteractedAt?: string;
   avatarUrl: string;
 }
 
@@ -136,6 +137,17 @@ const UNDO_RECALL_DURATION_SECONDS = 5;
 const buildFullName = (firstName?: string, lastName?: string) =>
   `${lastName || ""} ${firstName || ""}`.trim();
 
+const sortUsersByRecency = (input: SocialUser[]) => {
+  const toTime = (value?: string) => (value ? new Date(value).getTime() : 0);
+
+  return [...input].sort((a, b) => {
+    const diff = toTime(b.lastInteractedAt) - toTime(a.lastInteractedAt);
+    if (diff !== 0) return diff;
+    if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1;
+    return a.fullName.localeCompare(b.fullName);
+  });
+};
+
 type SocialPageMode = "admin" | "user";
 
 interface SocialPageProps {
@@ -169,6 +181,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
     if (!peer?._id) return;
 
     const mergedAvatar = peer.avatarUrl || peer.avatar;
+    const messageTime = payload.createdAt;
 
     setUsers((prev) => {
       const index = prev.findIndex((user) => user._id === peer._id);
@@ -184,6 +197,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
         role: peer.role,
         idUser: peer.idUser,
         avatarUrl: mergedAvatar || current.avatarUrl,
+        lastInteractedAt: messageTime || current.lastInteractedAt,
       };
 
       const noVisualChange =
@@ -193,13 +207,14 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
         current.email === updatedUser.email &&
         current.role === updatedUser.role &&
         current.idUser === updatedUser.idUser &&
-        current.avatarUrl === updatedUser.avatarUrl;
+        current.avatarUrl === updatedUser.avatarUrl &&
+        current.lastInteractedAt === updatedUser.lastInteractedAt;
 
       if (noVisualChange) return prev;
 
       const next = [...prev];
       next[index] = updatedUser;
-      return next;
+      return sortUsersByRecency(next);
     });
 
     setSelectedUser((prev) => {
@@ -333,7 +348,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
       }
 
       const data: SocialUser[] = await res.json();
-      setUsers(data);
+      setUsers(sortUsersByRecency(data));
 
       if (!isMobile && !selectedUser && data.length > 0) {
         setSelectedUser(data[0]);
