@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { Tabs } from "antd";
+import { Tabs, Button } from "antd";
 import { FaClipboardCheck, FaHome } from "react-icons/fa"; // Import icon từ react-icons
+import { TeamOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 import HomeRedFlagPage from "./HomeRedFlagPage";
 import UpdateRedFlagPage from "./UpdateRedFlagPage";
@@ -8,6 +10,7 @@ import UpdateRedFlagPage from "./UpdateRedFlagPage";
 // --- COMPONENT CHÍNH ---
 
 const RedFlagPage: React.FC = () => {
+  const navigate = useNavigate();
   // State để lưu tab đang active (nếu cần xử lý logic thêm)
   const [activeTab, setActiveTab] = useState<string>("1");
 
@@ -45,12 +48,20 @@ const RedFlagPage: React.FC = () => {
       <div className="overflow-hidden rounded-xl bg-white shadow-lg">
         {/* Header trang (Tùy chọn) */}
         <div className="border-b border-gray-100 bg-white px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Trang quản lý thi đua - Sao đỏ
-          </h1>
-          <p className="text-sm text-gray-500">
-            Theo dõi và cập nhật tình hình nề nếp thi đua
-          </p>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">
+                Trang quản lý thi đua - Sao đỏ
+              </h1>
+              <p className="text-sm text-gray-500">
+                Theo dõi và cập nhật tình hình nề nếp thi đua
+              </p>
+            </div>
+
+            <Button icon={<TeamOutlined />} onClick={() => navigate("/social")}>
+              Mạng xã hội nội bộ
+            </Button>
+          </div>
         </div>
 
         {/* Phần Tabs */}

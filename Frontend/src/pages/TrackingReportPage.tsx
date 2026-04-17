@@ -30,6 +30,7 @@ import "dayjs/locale/vi";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import { useAppContext } from "../context";
+import { useNavigate } from "react-router-dom";
 
 // --- IMPORT CÁC COMPONENT CON ---
 import ResponseRecordForm from "../components/ResponseRecordForm";
@@ -98,6 +99,7 @@ interface IReportResponse {
 // --- COMPONENT CHÍNH ---
 
 const TrackingReportPage: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState<IReportResponse | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<Dayjs | null>(dayjs());
@@ -327,6 +329,13 @@ const TrackingReportPage: React.FC = () => {
             size="large"
           >
             Tra cứu kết quả
+          </Button>
+          <Button
+            icon={<TeamOutlined />}
+            size="large"
+            onClick={() => navigate("/social")}
+          >
+            Mạng xã hội nội bộ
           </Button>
         </div>
       </Card>

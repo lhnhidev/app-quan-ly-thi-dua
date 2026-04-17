@@ -191,6 +191,17 @@ const routeConfig: RouteObject[] = [
           />
         ),
       },
+      {
+        path: "/social",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable Component={lazy(() => import("../pages/SocialPage"))} />
+            }
+          />
+        ),
+      },
     ],
   },
   {
