@@ -21,6 +21,7 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { io, type Socket } from "socket.io-client";
+import type { ArgsProps } from "antd/es/message/interface";
 import Header from "../components/Header";
 import { RiWechatLine } from "react-icons/ri";
 
@@ -128,6 +129,8 @@ const getMyMessageStatusLabel = (message: SocialMessage) => {
   return "Đã gửi";
 };
 
+const getUndoMessageKey = (messageId: string) => `social-recall-undo-${messageId}`;
+
 const SocialPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [users, setUsers] = useState<SocialUser[]>([]);
@@ -143,6 +146,40 @@ const SocialPage = () => {
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
+
+  const updateMessageInState = (payload: SocialMessage) => {
+    setMessages((prev) => prev.map((msg) => (msg._id === payload._id ? payload : msg)));
+  };
+
+  const closeUndoRecallNotice = (messageId: string) => {
+    messageApi.destroy(getUndoMessageKey(messageId));
+  };
+
+  const showUndoRecallNotice = (messageId: string) => {
+    const key = getUndoMessageKey(messageId);
+
+    const config: ArgsProps = {
+      key,
+      duration: 5,
+      content: (
+        <div className="flex items-center gap-2">
+          <span>Tin nhắn đã được thu hồi</span>
+          <Button
+            size="small"
+            type="link"
+            className="!h-auto !p-0"
+            onClick={() => {
+              void undoRecallMessage(messageId);
+            }}
+          >
+            Hoàn tác
+          </Button>
+        </div>
+      ),
+    };
+
+    messageApi.open(config);
+  };
 
   const token = useMemo(() => {
     const raw = localStorage.getItem("userInfo");
@@ -213,14 +250,41 @@ const SocialPage = () => {
       }
 
       const payload: SocialMessage = await res.json();
-      setMessages((prev) =>
-        prev.map((msg) => (msg._id === payload._id ? payload : msg)),
-      );
-
-      messageApi.success("Đã thu hồi tin nhắn");
+      updateMessageInState(payload);
+      showUndoRecallNotice(messageId);
     } catch (error: any) {
       console.error(error);
       messageApi.error(error.message || "Không thể thu hồi tin nhắn");
+    }
+  };
+
+  const undoRecallMessage = async (messageId: string) => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SERVER_URL}/social/messages/${messageId}/undo-recall`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Hoàn tác thu hồi thất bại");
+      }
+
+      const payload: SocialMessage = await res.json();
+      updateMessageInState(payload);
+      closeUndoRecallNotice(messageId);
+      messageApi.success("Đã hoàn tác thu hồi tin nhắn");
+    } catch (error: any) {
+      console.error(error);
+      messageApi.error(error.message || "Không thể hoàn tác thu hồi");
     }
   };
 
@@ -272,9 +336,11 @@ const SocialPage = () => {
     });
 
     socket.on("social:message-recalled", (payload: SocialMessage) => {
-      setMessages((prev) =>
-        prev.map((msg) => (msg._id === payload._id ? payload : msg)),
-      );
+      updateMessageInState(payload);
+
+      if (payload.sender._id === myId) {
+        showUndoRecallNotice(payload._id);
+      }
     });
 
     socketRef.current = socket;
@@ -339,7 +405,13 @@ const SocialPage = () => {
       );
     });
 
+    socket.on("social:message-unrecalled", (payload: SocialMessage) => {
+      updateMessageInState(payload);
+      closeUndoRecallNotice(payload._id);
+    });
+
     return () => {
+      messageApi.destroy();
       socket.disconnect();
       socketRef.current = null;
     };

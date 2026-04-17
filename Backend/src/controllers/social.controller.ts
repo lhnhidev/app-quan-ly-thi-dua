@@ -7,6 +7,58 @@ import SocialMessage from '../models/SocialMessage';
 import { getCloudinary } from '../config/cloudinary';
 import { emitToUser } from '../config/socket';
 
+const RECALL_UNDO_WINDOW_MS = 5000;
+const recallFinalizeTimers = new Map<string, NodeJS.Timeout>();
+
+const clearRecallFinalizeTimer = (messageId: string) => {
+  const timer = recallFinalizeTimers.get(messageId);
+  if (timer) {
+    clearTimeout(timer);
+    recallFinalizeTimers.delete(messageId);
+  }
+};
+
+const finalizeRecalledMessage = async (messageId: string) => {
+  clearRecallFinalizeTimer(messageId);
+
+  const message = await SocialMessage.findById(messageId);
+  if (!message || !message.recalled || !message.recallUndoAvailable) {
+    return;
+  }
+
+  const backupAttachments = Array.isArray((message as any).recalledBackupAttachments)
+    ? (message as any).recalledBackupAttachments
+    : [];
+
+  if (backupAttachments.length > 0) {
+    const cloudinary = getCloudinary();
+    await Promise.all(
+      backupAttachments.map(async (attachment: any) => {
+        try {
+          await cloudinary.uploader.destroy(attachment.publicId, {
+            resource_type: attachment.resourceType || 'auto',
+          });
+        } catch (error) {
+          console.error('Finalize recalled attachment destroy error:', error);
+        }
+      })
+    );
+  }
+
+  (message as any).recallUndoAvailable = false;
+  (message as any).recalledBackupText = '';
+  (message as any).recalledBackupAttachments = [];
+  await message.save();
+};
+
+const scheduleRecallFinalize = (messageId: string) => {
+  clearRecallFinalizeTimer(messageId);
+  const timer = setTimeout(() => {
+    void finalizeRecalledMessage(messageId);
+  }, RECALL_UNDO_WINDOW_MS);
+  recallFinalizeTimers.set(messageId, timer);
+};
+
 const normalize = (value: string) => value.toLowerCase().trim();
 
 const ensureAvatar = (user: any) => {
@@ -237,6 +289,9 @@ export const sendMessage = async (req: Request, res: Response) => {
       seenAt: null,
       recalled: false,
       recalledAt: null,
+      recallUndoAvailable: false,
+      recalledBackupText: '',
+      recalledBackupAttachments: [],
     });
 
     const populated = await SocialMessage.findById(message._id)
@@ -283,30 +338,25 @@ export const recallMessage = async (req: Request, res: Response) => {
     }
 
     if (message.recalled) {
-      return res.status(200).json({ message: 'Tin nhắn đã được thu hồi trước đó' });
+      const populatedExisting = await SocialMessage.findById(message._id)
+        .populate('sender', 'firstName lastName email avatar avatarUrl role idUser')
+        .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
+        .lean();
+      return res.status(200).json(populatedExisting);
     }
 
-    if (message.attachments?.length > 0) {
-      const cloudinary = getCloudinary();
-
-      await Promise.all(
-        message.attachments.map(async (attachment: any) => {
-          try {
-            await cloudinary.uploader.destroy(attachment.publicId, {
-              resource_type: attachment.resourceType || 'auto',
-            });
-          } catch (error) {
-            console.error('Recall attachment destroy error:', error);
-          }
-        })
-      );
-    }
+    const backupText = String(message.text || '');
+    const backupAttachments = Array.isArray(message.attachments) ? [...message.attachments] : [];
 
     message.recalled = true;
     message.recalledAt = new Date();
+    (message as any).recallUndoAvailable = true;
+    (message as any).recalledBackupText = backupText;
+    (message as any).recalledBackupAttachments = backupAttachments;
     message.text = '';
     message.attachments = [];
     await message.save();
+    scheduleRecallFinalize(String(message._id));
 
     const populated = await SocialMessage.findById(message._id)
       .populate('sender', 'firstName lastName email avatar avatarUrl role idUser')
@@ -320,5 +370,62 @@ export const recallMessage = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Recall message error:', error);
     return res.status(500).json({ message: 'Lỗi Server khi thu hồi tin nhắn' });
+  }
+};
+
+export const undoRecallMessage = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+    const messageId = String(req.params.messageId || '').trim();
+
+    if (!messageId) {
+      return res.status(400).json({ message: 'Thiếu messageId' });
+    }
+
+    const message = await SocialMessage.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ message: 'Tin nhắn không tồn tại' });
+    }
+
+    if (String(message.sender) !== String(currentUser._id)) {
+      return res.status(403).json({ message: 'Bạn chỉ có thể hoàn tác tin nhắn của chính mình' });
+    }
+
+    if (!message.recalled || !(message as any).recallUndoAvailable) {
+      return res.status(400).json({ message: 'Tin nhắn không ở trạng thái có thể hoàn tác' });
+    }
+
+    const recalledAtTime = message.recalledAt ? new Date(message.recalledAt).getTime() : 0;
+    if (!recalledAtTime || Date.now() - recalledAtTime > RECALL_UNDO_WINDOW_MS) {
+      await finalizeRecalledMessage(String(message._id));
+      return res.status(400).json({ message: 'Đã quá thời gian 5 giây để hoàn tác' });
+    }
+
+    clearRecallFinalizeTimer(String(message._id));
+
+    message.recalled = false;
+    message.recalledAt = null;
+    message.text = String((message as any).recalledBackupText || '');
+    message.attachments = Array.isArray((message as any).recalledBackupAttachments)
+      ? (message as any).recalledBackupAttachments
+      : [];
+    (message as any).recallUndoAvailable = false;
+    (message as any).recalledBackupText = '';
+    (message as any).recalledBackupAttachments = [];
+    await message.save();
+
+    const populated = await SocialMessage.findById(message._id)
+      .populate('sender', 'firstName lastName email avatar avatarUrl role idUser')
+      .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
+      .lean();
+
+    emitToUser(String(message.sender), 'social:message-unrecalled', populated);
+    emitToUser(String(message.receiver), 'social:message-unrecalled', populated);
+
+    return res.status(200).json(populated);
+  } catch (error) {
+    console.error('Undo recall message error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi hoàn tác thu hồi tin nhắn' });
   }
 };

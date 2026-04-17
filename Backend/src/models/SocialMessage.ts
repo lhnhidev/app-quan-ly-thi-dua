@@ -20,6 +20,9 @@ export type SocialMessageType = {
   seenAt?: Date | null;
   recalled: boolean;
   recalledAt?: Date | null;
+  recallUndoAvailable: boolean;
+  recalledBackupText?: string;
+  recalledBackupAttachments: MessageAttachment[];
 };
 
 const AttachmentSchema = new Schema<MessageAttachment>(
@@ -81,6 +84,18 @@ const SocialMessageSchema = new Schema<SocialMessageType>(
     recalledAt: {
       type: Date,
       default: null,
+    },
+    recallUndoAvailable: {
+      type: Boolean,
+      default: false,
+    },
+    recalledBackupText: {
+      type: String,
+      default: '',
+    },
+    recalledBackupAttachments: {
+      type: [AttachmentSchema],
+      default: [],
     },
   },
   { timestamps: true }
