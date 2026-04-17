@@ -132,6 +132,9 @@ const getMyMessageStatusLabel = (message: SocialMessage) => {
 const getUndoMessageKey = (messageId: string) => `social-recall-undo-${messageId}`;
 const UNDO_RECALL_DURATION_SECONDS = 5;
 
+const buildFullName = (firstName?: string, lastName?: string) =>
+  `${lastName || ""} ${firstName || ""}`.trim();
+
 const SocialPage = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [users, setUsers] = useState<SocialUser[]>([]);
@@ -149,6 +152,62 @@ const SocialPage = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const undoCountdownTimersRef = useRef<Record<string, number>>({});
+  const selectedUserIdRef = useRef<string>("");
+  const myIdRef = useRef<string>("");
+
+  const syncPeerFromMessage = (payload: SocialMessage) => {
+    const peer = payload.sender._id === myIdRef.current ? payload.receiver : payload.sender;
+    if (!peer?._id) return;
+
+    const mergedAvatar = peer.avatarUrl || peer.avatar;
+
+    setUsers((prev) => {
+      const index = prev.findIndex((user) => user._id === peer._id);
+      if (index < 0) return prev;
+
+      const current = prev[index];
+      const updatedUser: SocialUser = {
+        ...current,
+        firstName: peer.firstName,
+        lastName: peer.lastName,
+        fullName: buildFullName(peer.firstName, peer.lastName) || current.fullName,
+        email: peer.email,
+        role: peer.role,
+        idUser: peer.idUser,
+        avatarUrl: mergedAvatar || current.avatarUrl,
+      };
+
+      const noVisualChange =
+        current.firstName === updatedUser.firstName &&
+        current.lastName === updatedUser.lastName &&
+        current.fullName === updatedUser.fullName &&
+        current.email === updatedUser.email &&
+        current.role === updatedUser.role &&
+        current.idUser === updatedUser.idUser &&
+        current.avatarUrl === updatedUser.avatarUrl;
+
+      if (noVisualChange) return prev;
+
+      const next = [...prev];
+      next[index] = updatedUser;
+      return next;
+    });
+
+    setSelectedUser((prev) => {
+      if (!prev || prev._id !== peer._id) return prev;
+
+      return {
+        ...prev,
+        firstName: peer.firstName,
+        lastName: peer.lastName,
+        fullName: buildFullName(peer.firstName, peer.lastName) || prev.fullName,
+        email: peer.email,
+        role: peer.role,
+        idUser: peer.idUser,
+        avatarUrl: mergedAvatar || prev.avatarUrl,
+      };
+    });
+  };
 
   const updateMessageInState = (payload: SocialMessage) => {
     setMessages((prev) => prev.map((msg) => (msg._id === payload._id ? payload : msg)));
@@ -364,6 +423,14 @@ const SocialPage = () => {
   };
 
   useEffect(() => {
+    myIdRef.current = myId;
+  }, [myId]);
+
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUser?._id || "";
+  }, [selectedUser?._id]);
+
+  useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -428,8 +495,12 @@ const SocialPage = () => {
     socketRef.current = socket;
 
     socket.on("social:message", (payload: SocialMessage) => {
+      syncPeerFromMessage(payload);
+
+      const selectedUserId = selectedUserIdRef.current;
+
       const isCurrentConversation =
-        payload.sender._id === selectedUser?._id || payload.receiver._id === selectedUser?._id;
+        payload.sender._id === selectedUserId || payload.receiver._id === selectedUserId;
 
       if (isCurrentConversation) {
         setMessages((prev) => {
@@ -437,13 +508,7 @@ const SocialPage = () => {
           if (existed) return prev;
           return [...prev, payload];
         });
-
-        if (payload.sender._id === selectedUser?._id && payload.receiver._id === myId) {
-          fetchMessages(selectedUser._id);
-        }
       }
-
-      fetchUsers(searchText);
     });
 
     socket.on("social:presence", (payload: { userId: string; isOnline: boolean; lastSeenAt: string }) => {
@@ -502,7 +567,7 @@ const SocialPage = () => {
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, selectedUser?._id, searchText]);
+  }, [token]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -573,7 +638,6 @@ const SocialPage = () => {
 
       setTextMessage("");
       setSelectedFiles([]);
-      fetchUsers(searchText);
     } catch (error: any) {
       console.error(error);
       messageApi.error(error.message || "Không thể gửi tin nhắn");
