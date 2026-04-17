@@ -15,6 +15,7 @@ import {
 } from "antd";
 import {
   CloudUploadOutlined,
+  LeftOutlined,
   PaperClipOutlined,
   SearchOutlined,
   SendOutlined,
@@ -146,6 +147,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   const [users, setUsers] = useState<SocialUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const [searchText, setSearchText] = useState("");
   const [selectedUser, setSelectedUser] = useState<SocialUser | null>(null);
   const [messages, setMessages] = useState<SocialMessage[]>([]);
@@ -332,7 +334,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
       const data: SocialUser[] = await res.json();
       setUsers(data);
 
-      if (!selectedUser && data.length > 0) {
+      if (!isMobile && !selectedUser && data.length > 0) {
         setSelectedUser(data[0]);
       }
     } catch (error) {
@@ -427,6 +429,25 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
       setLoadingMessages(false);
     }
   };
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", onResize);
+    onResize();
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile && !selectedUser && users.length > 0) {
+      setSelectedUser(users[0]);
+    }
+  }, [isMobile, selectedUser, users]);
 
   useEffect(() => {
     myIdRef.current = myId;
@@ -606,6 +627,14 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const onSelectUser = (user: SocialUser) => {
+    setSelectedUser(user);
+  };
+
+  const backToContacts = () => {
+    setSelectedUser(null);
+  };
+
   const sendMessage = async () => {
     if (!selectedUser || !token) return;
 
@@ -666,7 +695,8 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
       />
 
       <div className="grid h-[calc(100vh-210px)] grid-cols-1 gap-4 p-4 md:grid-cols-[360px_1fr]">
-        <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-1)]">
+        {(!isMobile || !selectedUser) && (
+          <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-1)]">
           <div className="border-b border-[var(--border-color)] p-3">
             <Input
               placeholder="Tìm theo tên, lớp, mã HS/GV, email..."
@@ -697,7 +727,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
                           ? "border-[var(--primary-color)] bg-[var(--surface-2)]"
                           : "border-transparent hover:border-[var(--border-color)]"
                       }`}
-                      onClick={() => setSelectedUser(user)}
+                      onClick={() => onSelectUser(user)}
                     >
                       <Space align="start" className="w-full">
                         <Badge color={user.isOnline ? "#52c41a" : "#8c8c8c"} dot>
@@ -727,13 +757,23 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
               />
             )}
           </div>
-        </div>
+          </div>
+        )}
 
-        <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-1)]">
+        {(!isMobile || selectedUser) && (
+          <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--surface-1)]">
           {selectedUser ? (
             <>
               <div className="flex items-center justify-between border-b border-[var(--border-color)] p-3">
                 <Space>
+                  {isMobile && (
+                    <Button
+                      type="text"
+                      icon={<LeftOutlined />}
+                      onClick={backToContacts}
+                      className="!mr-1"
+                    />
+                  )}
                   <Badge color={selectedUser.isOnline ? "#52c41a" : "#8c8c8c"} dot>
                     <Avatar src={selectedUser.avatarUrl} icon={<UserOutlined />} />
                   </Badge>
@@ -893,7 +933,8 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
               <Empty description="Chọn một người dùng để bắt đầu trò chuyện" />
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
