@@ -10,6 +10,7 @@ import {
   AuditOutlined,
   TrophyOutlined,
   MessageOutlined,
+  WechatOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom"; // 1. Import useLocation
@@ -33,7 +34,8 @@ const SidebarContent = () => {
     if (path.startsWith("/role")) return "8";
     if (path.startsWith("/ranking")) return "9";
     if (path.startsWith("/response")) return "10";
-    if (path.startsWith("/settings")) return "11";
+    if (path.startsWith("/social")) return "11";
+    if (path.startsWith("/settings")) return "12";
     // Mặc định là dashboard (key "1") cho trang chủ hoặc /dashboard
     return "1";
   };
@@ -120,6 +122,13 @@ const SidebarContent = () => {
         },
         {
           key: "11",
+          icon: <WechatOutlined />,
+          label: "Mạng xã hội nội bộ",
+          className: "rounded-r-full my-1.5 h-12 flex items-center",
+          onClick: () => navigate("/social-admin"),
+        },
+        {
+          key: "12",
           icon: <SettingOutlined />,
           label: "Cài đặt",
           className: "rounded-r-full my-1.5 h-12 flex items-center",

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Suspense, lazy } from "react";
-import { useRoutes, type RouteObject } from "react-router-dom";
+import { Navigate, useRoutes, type RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -23,6 +23,45 @@ const Loadable = (props: {
       <Component {...rest} />
     </Suspense>
   );
+};
+
+const SocialEntryRedirect = () => {
+  const raw = localStorage.getItem("userInfo");
+
+  if (!raw) {
+    return <Navigate to="/" replace />;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    const role = parsed?.role;
+    return <Navigate to={role === "admin" ? "/social-admin" : "/social-user"} replace />;
+  } catch {
+    return <Navigate to="/" replace />;
+  }
+};
+
+const AdminSocialGuard = () => {
+  const raw = localStorage.getItem("userInfo");
+
+  if (!raw) {
+    return <Navigate to="/" replace />;
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.role !== "admin") {
+      return <Navigate to="/social-user" replace />;
+    }
+    return (
+      <Loadable
+        Component={lazy(() => import("../layouts/DefaultLayout"))}
+        children={<Loadable Component={lazy(() => import("../pages/SocialPage"))} />}
+      />
+    );
+  } catch {
+    return <Navigate to="/" replace />;
+  }
 };
 
 const routeConfig: RouteObject[] = [
@@ -189,6 +228,20 @@ const routeConfig: RouteObject[] = [
               />
             }
           />
+        ),
+      },
+      {
+        path: "/social",
+        element: <SocialEntryRedirect />,
+      },
+      {
+        path: "/social-admin",
+        element: <AdminSocialGuard />,
+      },
+      {
+        path: "/social-user",
+        element: (
+          <Loadable Component={lazy(() => import("../pages/SocialUserPage"))} />
         ),
       },
     ],

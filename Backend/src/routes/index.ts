@@ -9,6 +9,7 @@ import teacherRoutes from './teacher.routes';
 import assignClassesRoutes from './assignClasses.routes';
 import responseRoutes from './response.routes';
 import chatbotRoutes from './chatbot.routes';
+import socialRoutes from './social.routes';
 
 const router = (app: Application): void => {
   app.use('/user', userRoutes);
@@ -21,6 +22,7 @@ const router = (app: Application): void => {
   app.use('/assign-classes', assignClassesRoutes);
   app.use('/response', responseRoutes);
   app.use('/chat', chatbotRoutes);
+  app.use('/social', socialRoutes);
 };
 
 export default router;

@@ -11,6 +11,8 @@ export type UserType = {
   avatar?: string;
   avatarUrl?: string;
   avatarPublicId?: string;
+  isOnline?: boolean;
+  lastSeenAt?: Date;
 };
 
 const UserSchema: Schema = new Schema(
@@ -36,6 +38,8 @@ const UserSchema: Schema = new Schema(
     avatar: { type: String, default: '' },
     avatarUrl: { type: String, default: '' },
     avatarPublicId: { type: String, default: '' },
+    isOnline: { type: Boolean, default: false },
+    lastSeenAt: { type: Date, default: null },
   },
   {
     timestamps: true,
