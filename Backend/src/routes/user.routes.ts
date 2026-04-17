@@ -10,8 +10,14 @@ import {
   getTrackingReport,
   trackingRedFlag,
   getUserById,
+  getMyProfile,
+  updateMyProfile,
+  changeMyPassword,
+  getMyActivities,
+  uploadMyAvatar,
 } from '../controllers/user.controller';
 import { protect } from '../middlewares/protect';
+import { uploadAvatar } from '../middlewares/upload';
 
 const router = Router();
 
@@ -20,6 +26,11 @@ router.post('/login', loginUser);
 router.use(protect);
 
 router.get('/', getUsers);
+router.get('/me', getMyProfile);
+router.put('/me', updateMyProfile);
+router.patch('/me/password', changeMyPassword);
+router.get('/me/activities', getMyActivities);
+router.patch('/me/avatar', uploadAvatar.single('avatar'), uploadMyAvatar);
 router.post('/getTrackingReport', getTrackingReport);
 router.post('/trackingRedFlag', trackingRedFlag);
 router.get('/test', index);
