@@ -6,6 +6,7 @@ import {
   Empty,
   Input,
   List,
+  Popconfirm,
   Space,
   Spin,
   Tag,
@@ -78,6 +79,8 @@ interface SocialMessage {
   deliveredAt?: string;
   seen: boolean;
   seenAt?: string;
+  recalled: boolean;
+  recalledAt?: string;
   createdAt: string;
 }
 
@@ -119,6 +122,7 @@ const formatTime = (date: string) => {
 };
 
 const getMyMessageStatusLabel = (message: SocialMessage) => {
+  if (message.recalled) return "Đã thu hồi";
   if (message.seen) return "Đã đọc";
   if (message.delivered) return "Đã nhận";
   return "Đã gửi";
@@ -188,6 +192,38 @@ const SocialPage = () => {
     }
   };
 
+  const recallMessage = async (messageId: string) => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_SERVER_URL}/social/messages/${messageId}/recall`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Thu hồi tin nhắn thất bại");
+      }
+
+      const payload: SocialMessage = await res.json();
+      setMessages((prev) =>
+        prev.map((msg) => (msg._id === payload._id ? payload : msg)),
+      );
+
+      messageApi.success("Đã thu hồi tin nhắn");
+    } catch (error: any) {
+      console.error(error);
+      messageApi.error(error.message || "Không thể thu hồi tin nhắn");
+    }
+  };
+
   const fetchMessages = async (peerId: string) => {
     if (!token || !peerId) return;
 
@@ -233,6 +269,12 @@ const SocialPage = () => {
       auth: {
         token,
       },
+    });
+
+    socket.on("social:message-recalled", (payload: SocialMessage) => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg._id === payload._id ? payload : msg)),
+      );
     });
 
     socketRef.current = socket;
@@ -492,44 +534,66 @@ const SocialPage = () => {
                                 : "bg-[var(--surface-2)] text-[var(--text-color)]"
                             }`}
                           >
-                            {msg.text && <div className="whitespace-pre-wrap text-sm">{msg.text}</div>}
+                            {msg.recalled ? (
+                              <div className="text-sm italic opacity-80">Tin nhắn đã được thu hồi</div>
+                            ) : (
+                              <>
+                                {msg.text && <div className="whitespace-pre-wrap text-sm">{msg.text}</div>}
 
-                            {msg.attachments?.length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                {msg.attachments.map((att) => {
-                                  const isImage = att.mimeType?.startsWith("image/");
+                                {msg.attachments?.length > 0 && (
+                                  <div className="mt-2 space-y-1">
+                                    {msg.attachments.map((att) => {
+                                      const isImage = att.mimeType?.startsWith("image/");
 
-                                  return (
-                                    <div key={att.publicId}>
-                                      {isImage ? (
-                                        <a href={att.url} target="_blank" rel="noreferrer">
-                                          <img
-                                            src={att.url}
-                                            alt={att.fileName}
-                                            className="max-h-40 rounded border border-[var(--border-color)]"
-                                          />
-                                        </a>
-                                      ) : (
-                                        <a
-                                          href={att.url}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className={`inline-flex items-center gap-2 rounded px-2 py-1 text-xs ${
-                                            mine ? "bg-white/20 text-white" : "bg-[var(--surface-3)]"
-                                          }`}
-                                        >
-                                          <PaperClipOutlined /> {att.fileName}
-                                        </a>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                                      return (
+                                        <div key={att.publicId}>
+                                          {isImage ? (
+                                            <a href={att.url} target="_blank" rel="noreferrer">
+                                              <img
+                                                src={att.url}
+                                                alt={att.fileName}
+                                                className="max-h-40 rounded border border-[var(--border-color)]"
+                                              />
+                                            </a>
+                                          ) : (
+                                            <a
+                                              href={att.url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className={`inline-flex items-center gap-2 rounded px-2 py-1 text-xs ${
+                                                mine ? "bg-white/20 text-white" : "bg-[var(--surface-3)]"
+                                              }`}
+                                            >
+                                              <PaperClipOutlined /> {att.fileName}
+                                            </a>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </>
                             )}
 
-                            <div className={`mt-1 text-right text-[11px] ${mine ? "text-white/80" : "text-[var(--text-muted)]"}`}>
-                              {formatTime(msg.createdAt)}
-                              {mine ? ` • ${getMyMessageStatusLabel(msg)}` : ""}
+                            <div className="mt-1 flex items-center justify-end gap-2">
+                              {mine && !msg.recalled && (
+                                <Popconfirm
+                                  title="Thu hồi tin nhắn"
+                                  description="Bạn muốn thu hồi tin nhắn này?"
+                                  okText="Thu hồi"
+                                  cancelText="Hủy"
+                                  onConfirm={() => recallMessage(msg._id)}
+                                >
+                                  <Button size="small" type="link" className="!h-auto !p-0 !text-white/80">
+                                    Thu hồi
+                                  </Button>
+                                </Popconfirm>
+                              )}
+
+                              <div className={`text-right text-[11px] ${mine ? "text-white/80" : "text-[var(--text-muted)]"}`}>
+                                {formatTime(msg.createdAt)}
+                                {mine ? ` • ${getMyMessageStatusLabel(msg)}` : ""}
+                              </div>
                             </div>
                           </div>
                         </div>

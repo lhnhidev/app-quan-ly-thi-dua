@@ -18,6 +18,8 @@ export type SocialMessageType = {
   deliveredAt?: Date | null;
   seen: boolean;
   seenAt?: Date | null;
+  recalled: boolean;
+  recalledAt?: Date | null;
 };
 
 const AttachmentSchema = new Schema<MessageAttachment>(
@@ -69,6 +71,14 @@ const SocialMessageSchema = new Schema<SocialMessageType>(
       default: false,
     },
     seenAt: {
+      type: Date,
+      default: null,
+    },
+    recalled: {
+      type: Boolean,
+      default: false,
+    },
+    recalledAt: {
       type: Date,
       default: null,
     },

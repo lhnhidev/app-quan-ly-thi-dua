@@ -235,6 +235,8 @@ export const sendMessage = async (req: Request, res: Response) => {
       deliveredAt: deliveredNow ? now : null,
       seen: false,
       seenAt: null,
+      recalled: false,
+      recalledAt: null,
     });
 
     const populated = await SocialMessage.findById(message._id)
@@ -258,5 +260,65 @@ export const sendMessage = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Send message error:', error);
     return res.status(500).json({ message: 'Lỗi Server khi gửi tin nhắn' });
+  }
+};
+
+export const recallMessage = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+    const messageId = String(req.params.messageId || '').trim();
+
+    if (!messageId) {
+      return res.status(400).json({ message: 'Thiếu messageId' });
+    }
+
+    const message = await SocialMessage.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ message: 'Tin nhắn không tồn tại' });
+    }
+
+    if (String(message.sender) !== String(currentUser._id)) {
+      return res.status(403).json({ message: 'Bạn chỉ có thể thu hồi tin nhắn của chính mình' });
+    }
+
+    if (message.recalled) {
+      return res.status(200).json({ message: 'Tin nhắn đã được thu hồi trước đó' });
+    }
+
+    if (message.attachments?.length > 0) {
+      const cloudinary = getCloudinary();
+
+      await Promise.all(
+        message.attachments.map(async (attachment: any) => {
+          try {
+            await cloudinary.uploader.destroy(attachment.publicId, {
+              resource_type: attachment.resourceType || 'auto',
+            });
+          } catch (error) {
+            console.error('Recall attachment destroy error:', error);
+          }
+        })
+      );
+    }
+
+    message.recalled = true;
+    message.recalledAt = new Date();
+    message.text = '';
+    message.attachments = [];
+    await message.save();
+
+    const populated = await SocialMessage.findById(message._id)
+      .populate('sender', 'firstName lastName email avatar avatarUrl role idUser')
+      .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
+      .lean();
+
+    emitToUser(String(message.sender), 'social:message-recalled', populated);
+    emitToUser(String(message.receiver), 'social:message-recalled', populated);
+
+    return res.status(200).json(populated);
+  } catch (error) {
+    console.error('Recall message error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi thu hồi tin nhắn' });
   }
 };

@@ -31,6 +31,7 @@ const syncDeliveredMessages = async (receiverId: string) => {
   const pending = await SocialMessage.find({
     receiver: receiverId,
     delivered: false,
+    recalled: false,
   })
     .select('_id sender')
     .lean();

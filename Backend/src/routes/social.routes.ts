@@ -3,6 +3,7 @@ import { protect } from '../middlewares/protect';
 import {
   getMessagesByPeer,
   getSocialUsers,
+  recallMessage,
   sendMessage,
 } from '../controllers/social.controller';
 import multer from 'multer';
@@ -21,5 +22,6 @@ router.use(protect);
 router.get('/users', getSocialUsers);
 router.get('/messages/:peerId', getMessagesByPeer);
 router.post('/messages', upload.array('attachments', 5), sendMessage);
+router.patch('/messages/:messageId/recall', recallMessage);
 
 export default router;
