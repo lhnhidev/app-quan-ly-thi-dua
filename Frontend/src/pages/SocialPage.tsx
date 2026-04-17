@@ -6,6 +6,7 @@ import {
   Empty,
   Input,
   List,
+  Modal,
   Popconfirm,
   Space,
   Spin,
@@ -17,9 +18,11 @@ import {
   CloudUploadOutlined,
   LeftOutlined,
   PaperClipOutlined,
+  PhoneOutlined,
   SearchOutlined,
   SendOutlined,
   UserOutlined,
+  VideoCameraOutlined,
 } from "@ant-design/icons";
 import { io, type Socket } from "socket.io-client";
 import type { ArgsProps } from "antd/es/message/interface";
@@ -93,6 +96,30 @@ interface MessageStatusPayload {
   messageIds: string[];
 }
 
+type CallType = "audio" | "video";
+type CallStatus = "ringing" | "connecting" | "connected";
+
+interface CallerProfile {
+  _id: string;
+  fullName: string;
+  avatarUrl?: string;
+}
+
+interface IncomingCallState {
+  fromUserId: string;
+  callType: CallType;
+  caller: CallerProfile;
+}
+
+interface ActiveCallState {
+  peerId: string;
+  peerName: string;
+  peerAvatar?: string;
+  callType: CallType;
+  direction: "incoming" | "outgoing";
+  status: CallStatus;
+}
+
 const roleLabel: Record<string, string> = {
   admin: "Quản trị viên",
   teacher: "Giáo viên",
@@ -133,6 +160,9 @@ const getMyMessageStatusLabel = (message: SocialMessage) => {
 
 const getUndoMessageKey = (messageId: string) => `social-recall-undo-${messageId}`;
 const UNDO_RECALL_DURATION_SECONDS = 5;
+const rtcConfig: RTCConfiguration = {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }],
+};
 
 const buildFullName = (firstName?: string, lastName?: string) =>
   `${lastName || ""} ${firstName || ""}`.trim();
@@ -168,12 +198,24 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [myId, setMyId] = useState<string>("");
   const [undoCountdownMap, setUndoCountdownMap] = useState<Record<string, number>>({});
+  const [incomingCall, setIncomingCall] = useState<IncomingCallState | null>(null);
+  const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const undoCountdownTimersRef = useRef<Record<string, number>>({});
   const selectedUserIdRef = useRef<string>("");
   const myIdRef = useRef<string>("");
+  const selfProfileRef = useRef<CallerProfile | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  const ringtoneContextRef = useRef<AudioContext | null>(null);
+  const ringtoneIntervalRef = useRef<number | null>(null);
+  const activeCallRef = useRef<ActiveCallState | null>(null);
+  const incomingCallRef = useRef<IncomingCallState | null>(null);
   const isMobileChatView = isMobile && Boolean(selectedUser);
 
   const syncPeerFromMessage = (payload: SocialMessage) => {
@@ -320,11 +362,281 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
     try {
       const parsed = JSON.parse(raw);
       setMyId(parsed._id || "");
+      selfProfileRef.current = {
+        _id: parsed._id || "",
+        fullName: buildFullName(parsed.firstName, parsed.lastName) || parsed.email || "Người dùng",
+        avatarUrl: parsed.avatarUrl || parsed.avatar,
+      };
       return parsed.token || "";
     } catch {
       return "";
     }
   }, []);
+
+  const attachStreamToVideo = async (
+    elementRef: { current: HTMLVideoElement | null },
+    stream: MediaStream | null,
+  ) => {
+    if (!elementRef.current) return;
+    elementRef.current.srcObject = stream;
+
+    if (stream) {
+      try {
+        await elementRef.current.play();
+      } catch {
+        // Ignore autoplay failures; browser may require an additional user gesture.
+      }
+    }
+  };
+
+  const stopRingtone = () => {
+    if (ringtoneIntervalRef.current) {
+      window.clearInterval(ringtoneIntervalRef.current);
+      ringtoneIntervalRef.current = null;
+    }
+  };
+
+  const playRingtonePulse = () => {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+
+    if (!ringtoneContextRef.current) {
+      ringtoneContextRef.current = new AudioCtx();
+    }
+
+    const ctx = ringtoneContextRef.current;
+    if (!ctx) return;
+
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
+
+    const now = ctx.currentTime;
+
+    const scheduleTone = (offset: number, duration: number, frequency: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, now + offset);
+
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.2, now + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + offset);
+      osc.stop(now + offset + duration);
+    };
+
+    // Double-beep ringtone style.
+    scheduleTone(0, 0.18, 780);
+    scheduleTone(0.24, 0.2, 860);
+  };
+
+  const startRingtone = () => {
+    stopRingtone();
+    playRingtonePulse();
+    ringtoneIntervalRef.current = window.setInterval(() => {
+      playRingtonePulse();
+    }, 1400);
+  };
+
+  const attachCurrentStreamsToVideos = () => {
+    void attachStreamToVideo(localVideoRef, localStreamRef.current);
+    void attachStreamToVideo(remoteVideoRef, remoteStreamRef.current);
+  };
+
+  const cleanupCallResources = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.onicecandidate = null;
+      peerConnectionRef.current.ontrack = null;
+      peerConnectionRef.current.onconnectionstatechange = null;
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
+    }
+
+    if (remoteStreamRef.current) {
+      remoteStreamRef.current.getTracks().forEach((track) => track.stop());
+      remoteStreamRef.current = null;
+    }
+
+    stopRingtone();
+    void attachStreamToVideo(localVideoRef, null);
+    void attachStreamToVideo(remoteVideoRef, null);
+  };
+
+  const createPeerConnection = (peerId: string) => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+
+    const peerConnection = new RTCPeerConnection(rtcConfig);
+    peerConnectionRef.current = peerConnection;
+
+    peerConnection.onicecandidate = (event) => {
+      if (!event.candidate || !socketRef.current) return;
+      socketRef.current.emit("social:call-ice-candidate", {
+        toUserId: peerId,
+        candidate: event.candidate.toJSON(),
+      });
+    };
+
+    peerConnection.ontrack = (event) => {
+      const [stream] = event.streams;
+      if (!stream) return;
+      remoteStreamRef.current = stream;
+      void attachStreamToVideo(remoteVideoRef, stream);
+      setActiveCall((prev) => (prev ? { ...prev, status: "connected" } : prev));
+      stopRingtone();
+    };
+
+    peerConnection.onconnectionstatechange = () => {
+      const state = peerConnection.connectionState;
+      if (state === "connected") {
+        setActiveCall((prev) => (prev ? { ...prev, status: "connected" } : prev));
+        stopRingtone();
+      }
+
+      if (state === "failed" || state === "closed" || state === "disconnected") {
+        setActiveCall(null);
+        cleanupCallResources();
+      }
+    };
+
+    return peerConnection;
+  };
+
+  const getMediaConstraints = (callType: CallType): MediaStreamConstraints => ({
+    audio: true,
+    video: callType === "video",
+  });
+
+  const getOrCreateLocalStream = async (callType: CallType) => {
+    if (localStreamRef.current) return localStreamRef.current;
+    const stream = await navigator.mediaDevices.getUserMedia(getMediaConstraints(callType));
+    localStreamRef.current = stream;
+    void attachStreamToVideo(localVideoRef, stream);
+    return stream;
+  };
+
+  const addLocalTracksToPeer = (peerConnection: RTCPeerConnection, stream: MediaStream) => {
+    stream.getTracks().forEach((track) => {
+      peerConnection.addTrack(track, stream);
+    });
+  };
+
+  const finishCall = (shouldNotifyPeer: boolean) => {
+    if (shouldNotifyPeer && activeCall && socketRef.current) {
+      socketRef.current.emit("social:call-ended", {
+        toUserId: activeCall.peerId,
+      });
+    }
+
+    setIncomingCall(null);
+    setActiveCall(null);
+    cleanupCallResources();
+  };
+
+  const startCall = async (callType: CallType) => {
+    if (!socketRef.current || !selectedUser) return;
+    if (activeCall || incomingCall) {
+      messageApi.warning("Bạn đang có cuộc gọi khác");
+      return;
+    }
+
+    try {
+      await getOrCreateLocalStream(callType);
+
+      setActiveCall({
+        peerId: selectedUser._id,
+        peerName: selectedUser.fullName,
+        peerAvatar: selectedUser.avatarUrl,
+        callType,
+        direction: "outgoing",
+        status: "ringing",
+      });
+
+      startRingtone();
+
+      socketRef.current.emit("social:call-request", {
+        toUserId: selectedUser._id,
+        callType,
+        caller: selfProfileRef.current,
+      });
+    } catch (error) {
+      console.error(error);
+      cleanupCallResources();
+      messageApi.error("Không truy cập được micro/camera để thực hiện cuộc gọi");
+    }
+  };
+
+  const rejectIncomingCall = () => {
+    if (!socketRef.current || !incomingCall) return;
+
+    socketRef.current.emit("social:call-rejected", {
+      toUserId: incomingCall.fromUserId,
+      reason: "declined",
+    });
+
+    setIncomingCall(null);
+    stopRingtone();
+  };
+
+  const acceptIncomingCall = async () => {
+    if (!socketRef.current || !incomingCall) return;
+
+    try {
+      const localStream = await getOrCreateLocalStream(incomingCall.callType);
+      const peerConnection = createPeerConnection(incomingCall.fromUserId);
+      addLocalTracksToPeer(peerConnection, localStream);
+
+      setActiveCall({
+        peerId: incomingCall.fromUserId,
+        peerName: incomingCall.caller.fullName,
+        peerAvatar: incomingCall.caller.avatarUrl,
+        callType: incomingCall.callType,
+        direction: "incoming",
+        status: "connecting",
+      });
+
+      stopRingtone();
+
+      socketRef.current.emit("social:call-accepted", {
+        toUserId: incomingCall.fromUserId,
+        callType: incomingCall.callType,
+      });
+
+      setIncomingCall(null);
+    } catch (error) {
+      console.error(error);
+      cleanupCallResources();
+      messageApi.error("Không truy cập được micro/camera để nhận cuộc gọi");
+    }
+  };
+
+  const cancelOutgoingCall = () => {
+    if (!socketRef.current || !activeCall) return;
+
+    if (activeCall.direction === "outgoing" && activeCall.status === "ringing") {
+      socketRef.current.emit("social:call-cancelled", {
+        toUserId: activeCall.peerId,
+      });
+    } else {
+      socketRef.current.emit("social:call-ended", {
+        toUserId: activeCall.peerId,
+      });
+    }
+
+    finishCall(false);
+  };
 
   const fetchUsers = async (q = "") => {
     if (!token) return;
@@ -474,6 +786,14 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   }, [selectedUser?._id]);
 
   useEffect(() => {
+    activeCallRef.current = activeCall;
+  }, [activeCall]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  useEffect(() => {
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -600,12 +920,161 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
       closeUndoRecallNotice(payload._id);
     });
 
+    socket.on(
+      "social:call-request",
+      (payload: { fromUserId: string; callType: CallType; caller: CallerProfile }) => {
+        if (!payload?.fromUserId || !payload?.callType || !payload?.caller) return;
+
+        if (activeCallRef.current || incomingCallRef.current) {
+          socket.emit("social:call-busy", { toUserId: payload.fromUserId });
+          return;
+        }
+
+        setIncomingCall({
+          fromUserId: payload.fromUserId,
+          callType: payload.callType,
+          caller: payload.caller,
+        });
+        startRingtone();
+      },
+    );
+
+    socket.on("social:call-cancelled", (payload: { fromUserId: string }) => {
+      if (!payload?.fromUserId) return;
+      if (incomingCallRef.current?.fromUserId === payload.fromUserId) {
+        setIncomingCall(null);
+        stopRingtone();
+      }
+    });
+
+    socket.on("social:call-busy", (payload: { fromUserId: string }) => {
+      if (!payload?.fromUserId) return;
+      if (activeCallRef.current?.peerId === payload.fromUserId) {
+        messageApi.warning("Người dùng đang bận");
+        setActiveCall(null);
+        cleanupCallResources();
+      }
+    });
+
+    socket.on("social:call-rejected", (payload: { fromUserId: string }) => {
+      if (!payload?.fromUserId) return;
+      if (activeCallRef.current?.peerId === payload.fromUserId) {
+        messageApi.info("Cuộc gọi đã bị từ chối");
+        setActiveCall(null);
+        cleanupCallResources();
+      }
+    });
+
+    socket.on("social:call-accepted", async (payload: { fromUserId: string; callType: CallType }) => {
+      if (!payload?.fromUserId) return;
+      const currentCall = activeCallRef.current;
+
+      if (!currentCall || currentCall.peerId !== payload.fromUserId || currentCall.direction !== "outgoing") {
+        return;
+      }
+
+      try {
+        const peerConnection = peerConnectionRef.current || createPeerConnection(payload.fromUserId);
+        const stream = await getOrCreateLocalStream(currentCall.callType);
+        addLocalTracksToPeer(peerConnection, stream);
+
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        socket.emit("social:call-offer", {
+          toUserId: payload.fromUserId,
+          offer,
+        });
+
+        setActiveCall((prev) => (prev ? { ...prev, status: "connecting" } : prev));
+        stopRingtone();
+      } catch (error) {
+        console.error(error);
+        messageApi.error("Không thể bắt đầu cuộc gọi");
+        setActiveCall(null);
+        cleanupCallResources();
+      }
+    });
+
+    socket.on("social:call-offer", async (payload: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
+      if (!payload?.fromUserId || !payload?.offer) return;
+
+      try {
+        const currentCall = activeCallRef.current;
+        if (!currentCall || currentCall.peerId !== payload.fromUserId) {
+          socket.emit("social:call-rejected", {
+            toUserId: payload.fromUserId,
+            reason: "invalid-state",
+          });
+          return;
+        }
+
+        const peerConnection = peerConnectionRef.current || createPeerConnection(payload.fromUserId);
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        socket.emit("social:call-answer", {
+          toUserId: payload.fromUserId,
+          answer,
+        });
+
+        setActiveCall((prev) => (prev ? { ...prev, status: "connecting" } : prev));
+      } catch (error) {
+        console.error(error);
+        setActiveCall(null);
+        cleanupCallResources();
+      }
+    });
+
+    socket.on("social:call-answer", async (payload: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
+      if (!payload?.fromUserId || !payload?.answer) return;
+
+      const currentCall = activeCallRef.current;
+      if (!currentCall || currentCall.peerId !== payload.fromUserId) return;
+
+      try {
+        const peerConnection = peerConnectionRef.current;
+        if (!peerConnection) return;
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+        setActiveCall((prev) => (prev ? { ...prev, status: "connected" } : prev));
+      } catch (error) {
+        console.error(error);
+      }
+    });
+
+    socket.on("social:call-ice-candidate", async (payload: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
+      if (!payload?.fromUserId || !payload?.candidate) return;
+
+      try {
+        const peerConnection = peerConnectionRef.current;
+        if (!peerConnection) return;
+        await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+      } catch (error) {
+        console.error(error);
+      }
+    });
+
+    socket.on("social:call-ended", (payload: { fromUserId: string }) => {
+      if (!payload?.fromUserId) return;
+      if (activeCallRef.current?.peerId === payload.fromUserId) {
+        messageApi.info("Cuộc gọi đã kết thúc");
+        setActiveCall(null);
+        cleanupCallResources();
+      }
+    });
+
     return () => {
       messageApi.destroy();
       Object.values(undoCountdownTimersRef.current).forEach((timerId) => {
         window.clearInterval(timerId);
       });
       undoCountdownTimersRef.current = {};
+      cleanupCallResources();
+      if (ringtoneContextRef.current) {
+        void ringtoneContextRef.current.close();
+        ringtoneContextRef.current = null;
+      }
       socket.disconnect();
       socketRef.current = null;
     };
@@ -615,6 +1084,17 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (!activeCall) return;
+    const timer = window.setTimeout(() => {
+      attachCurrentStreamsToVideos();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [activeCall]);
 
   const onSearch = (value: string) => {
     setSearchText(value);
@@ -810,6 +1290,23 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
                     </Text>
                   </div>
                 </Space>
+
+                <Space>
+                  <Button
+                    type="text"
+                    icon={<PhoneOutlined />}
+                    title="Gọi thoại"
+                    onClick={() => startCall("audio")}
+                    disabled={Boolean(activeCall && activeCall.peerId !== selectedUser._id)}
+                  />
+                  <Button
+                    type="text"
+                    icon={<VideoCameraOutlined />}
+                    title="Gọi video"
+                    onClick={() => startCall("video")}
+                    disabled={Boolean(activeCall && activeCall.peerId !== selectedUser._id)}
+                  />
+                </Space>
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -962,6 +1459,90 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
           </div>
         )}
       </div>
+
+      <Modal
+        open={Boolean(incomingCall)}
+        onCancel={rejectIncomingCall}
+        closable={false}
+        footer={null}
+        centered
+        destroyOnClose
+      >
+        {incomingCall && (
+          <div className="text-center">
+            <Avatar size={64} src={incomingCall.caller.avatarUrl} icon={<UserOutlined />} />
+            <div className="mt-3 text-lg font-semibold">{incomingCall.caller.fullName}</div>
+            <div className="mt-1 text-sm text-[var(--text-muted)]">
+              {incomingCall.callType === "video" ? "Cuộc gọi video đến" : "Cuộc gọi thoại đến"}
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <Button danger onClick={rejectIncomingCall}>
+                Từ chối
+              </Button>
+              <Button type="primary" onClick={acceptIncomingCall}>
+                Nhấc máy
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(activeCall)}
+        onCancel={cancelOutgoingCall}
+        closable={false}
+        footer={null}
+        centered
+        width={activeCall?.callType === "video" ? 860 : 420}
+        destroyOnClose
+      >
+        {activeCall && (
+          <div>
+            <div className="mb-3 text-center">
+              <div className="text-base font-semibold">{activeCall.peerName}</div>
+              <div className="text-xs text-[var(--text-muted)]">
+                {activeCall.status === "ringing"
+                  ? "Đang đổ chuông..."
+                  : activeCall.status === "connecting"
+                    ? "Đang kết nối..."
+                    : "Đang trò chuyện"}
+              </div>
+            </div>
+
+            {activeCall.callType === "video" ? (
+              <div className="relative h-[360px] overflow-hidden rounded-xl bg-black">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="absolute bottom-3 right-3 h-24 w-36 rounded-lg border border-white/20 bg-black object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-[220px] flex-col items-center justify-center rounded-xl bg-[var(--surface-2)]">
+                <Avatar size={88} src={activeCall.peerAvatar} icon={<UserOutlined />} />
+                <div className="mt-3 text-sm text-[var(--text-muted)]">Cuộc gọi thoại</div>
+                <video ref={remoteVideoRef} autoPlay playsInline className="hidden" />
+                <video ref={localVideoRef} autoPlay muted playsInline className="hidden" />
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-center">
+              <Button danger icon={<PhoneOutlined />} onClick={cancelOutgoingCall}>
+                Kết thúc
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
