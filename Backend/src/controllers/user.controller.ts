@@ -6,6 +6,7 @@ import generateToken from '../utils/generateToken';
 import Class from '../models/Class';
 import RecordForm from '../models/RecordForm';
 import ResponseModel from '../models/Response';
+import { getCloudinary } from '../config/cloudinary';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -624,6 +625,16 @@ export const getMyProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Người dùng không tồn tại' });
     }
 
+    if (!user.avatarUrl && user.avatar) {
+      user.avatarUrl = user.avatar;
+      await user.save();
+    }
+
+    if (!user.avatar && user.avatarUrl) {
+      user.avatar = user.avatarUrl;
+      await user.save();
+    }
+
     return res.status(200).json(user);
   } catch (error) {
     console.error('Get My Profile Error:', error);
@@ -794,5 +805,72 @@ export const getMyActivities = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get My Activities Error:', error);
     return res.status(500).json({ message: 'Lỗi Server khi lấy lịch sử hoạt động' });
+  }
+};
+
+export const uploadMyAvatar = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser?._id) {
+      return res.status(401).json({ message: 'Không xác định được người dùng hiện tại' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Vui lòng chọn ảnh đại diện để tải lên' });
+    }
+
+    const user = await User.findById(currentUser._id).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    const cloudinary = getCloudinary();
+
+    if (user.avatarPublicId) {
+      await cloudinary.uploader.destroy(user.avatarPublicId, {
+        resource_type: 'image',
+      });
+    }
+
+    const uploaded = await new Promise<any>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: process.env.CLOUDINARY_AVATAR_FOLDER || 'app-thi-dua/avatars',
+          public_id: `user-${user._id}-${Date.now()}`,
+          resource_type: 'image',
+          overwrite: true,
+          transformation: [
+            { width: 512, height: 512, crop: 'fill', gravity: 'face' },
+            { quality: 'auto', fetch_format: 'auto' },
+          ],
+        },
+        (error, result) => {
+          if (error || !result) {
+            reject(error || new Error('Upload ảnh thất bại'));
+            return;
+          }
+
+          resolve(result);
+        }
+      );
+
+      stream.end(req.file?.buffer);
+    });
+
+    user.avatar = uploaded.secure_url;
+    user.avatarUrl = uploaded.secure_url;
+    user.avatarPublicId = uploaded.public_id;
+
+    await user.save();
+
+    return res.status(200).json({
+      message: 'Cập nhật ảnh đại diện thành công',
+      data: user,
+    });
+  } catch (error) {
+    console.error('Upload My Avatar Error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi upload ảnh đại diện' });
   }
 };

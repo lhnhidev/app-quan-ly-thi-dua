@@ -39,6 +39,8 @@ interface AccountInfo {
   lastName?: string;
   email?: string;
   role?: RoleType;
+  avatar?: string;
+  avatarUrl?: string;
   token?: string;
 }
 
@@ -112,6 +114,25 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const handleUserInfoUpdated = () => {
+      const raw = localStorage.getItem("userInfo");
+      if (!raw) return;
+
+      try {
+        setAccount(JSON.parse(raw));
+      } catch {
+        setAccount({});
+      }
+    };
+
+    window.addEventListener("user-info-updated", handleUserInfoUpdated);
+
+    return () => {
+      window.removeEventListener("user-info-updated", handleUserInfoUpdated);
+    };
+  }, []);
+
   const fullName = useMemo(() => {
     const firstName = account?.firstName || "";
     const lastName = account?.lastName || "";
@@ -124,9 +145,17 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
   }, [account?.role]);
 
   const avatarUrl = useMemo(() => {
+    if (account?.avatarUrl) {
+      return account.avatarUrl;
+    }
+
+    if (account?.avatar) {
+      return account.avatar;
+    }
+
     const text = encodeURIComponent(fullName);
     return `https://ui-avatars.com/api/?name=${text}&background=1f5ca9&color=fff&size=128`;
-  }, [fullName]);
+  }, [account?.avatar, account?.avatarUrl, fullName]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -243,24 +272,28 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
               menu={{ items: accountMenuItems }}
               dropdownRender={(menu) => (
                 <div
-                  className="min-w-[280px] rounded-xl border p-3 shadow-lg"
+                  className="min-w-[300px] rounded-2xl border p-3 shadow-lg"
                   style={{
                     backgroundColor: "var(--surface-1)",
                     borderColor: "var(--border-color)",
                   }}
                 >
-                  <div className="flex items-start gap-3">
-                    <Badge status="success" offset={[-2, 34]} text="Online" color="#52c41a">
-                      <Avatar size={44} src={avatarUrl} icon={<UserOutlined />} />
-                    </Badge>
-                    <div className="flex-1">
+                  <div className="flex items-start gap-3 rounded-xl px-1 py-1">
+                    <Avatar size={48} src={avatarUrl} icon={<UserOutlined />} />
+                    <div className="min-w-0 flex-1">
                       <Text strong style={{ color: "var(--text-color)" }}>
                         {fullName}
                       </Text>
-                      <div>
-                        <Text type="secondary">{account.email || "Chưa có email"}</Text>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+                        <Text type="secondary">Online</Text>
                       </div>
-                      <div>
+                      <div className="mt-0.5 truncate">
+                        <Text type="secondary" className="!text-sm">
+                          {account.email || "Chưa có email"}
+                        </Text>
+                      </div>
+                      <div className="mt-1">
                         <Text style={{ color: "var(--primary-color)", fontWeight: 600 }}>
                           {roleText}
                         </Text>
@@ -269,7 +302,12 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
                   </div>
 
                   <Divider className="!my-3" />
-                  {menu}
+                  <div
+                    className="rounded-xl p-1"
+                    style={{ backgroundColor: "var(--surface-2)" }}
+                  >
+                    {menu}
+                  </div>
                 </div>
               )}
               placement="bottomRight"

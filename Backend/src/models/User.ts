@@ -8,6 +8,9 @@ export type UserType = {
   role: string;
   idUser: string;
   followingClasses?: string[];
+  avatar?: string;
+  avatarUrl?: string;
+  avatarPublicId?: string;
 };
 
 const UserSchema: Schema = new Schema(
@@ -30,6 +33,9 @@ const UserSchema: Schema = new Schema(
         default: [], // Mặc định là mảng rỗng
       },
     ],
+    avatar: { type: String, default: '' },
+    avatarUrl: { type: String, default: '' },
+    avatarPublicId: { type: String, default: '' },
   },
   {
     timestamps: true,

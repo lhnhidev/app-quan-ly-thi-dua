@@ -19,6 +19,7 @@ import {
   ApartmentOutlined,
   CalendarOutlined,
   ClockCircleOutlined,
+  CloudUploadOutlined,
   IdcardOutlined,
   LockOutlined,
   MailOutlined,
@@ -48,6 +49,9 @@ interface UserProfile {
   email: string;
   role: RoleType;
   followingClasses: FollowingClass[];
+  avatar?: string;
+  avatarUrl?: string;
+  avatarPublicId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -104,6 +108,10 @@ const UserProfilePage = () => {
   const { request: changePasswordRequest, loading: changingPassword } = useFetch<{
     message: string;
   }>();
+  const { request: uploadAvatarRequest, loading: uploadingAvatar } = useFetch<{
+    message: string;
+    data: UserProfile;
+  }>();
   const { request: getActivitiesRequest, loading: loadingActivities } =
     useFetch<ActivityResponse>();
   const [messageApi, contextHolder] = message.useMessage();
@@ -111,6 +119,7 @@ const UserProfilePage = () => {
   const [passwordForm] = Form.useForm();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
     const userInfoString = localStorage.getItem("userInfo");
@@ -187,9 +196,17 @@ const UserProfilePage = () => {
   }, [profile]);
 
   const avatarUrl = useMemo(() => {
+    if (profile?.avatarUrl) {
+      return profile.avatarUrl;
+    }
+
+    if (profile?.avatar) {
+      return profile.avatar;
+    }
+
     const text = encodeURIComponent(fullName || "User");
     return `https://ui-avatars.com/api/?name=${text}&background=1f5ca9&color=fff&size=128`;
-  }, [fullName]);
+  }, [fullName, profile?.avatar, profile?.avatarUrl]);
 
   const roleLabel = useMemo(() => {
     if (!profile) return "-";
@@ -207,6 +224,62 @@ const UserProfilePage = () => {
     };
 
     localStorage.setItem("userInfo", JSON.stringify(merged));
+    window.dispatchEvent(new Event("user-info-updated"));
+  };
+
+  const handleAvatarSelect: React.ChangeEventHandler<HTMLInputElement> = (event) => {
+    const file = event.target.files?.[0] || null;
+
+    if (!file) {
+      setSelectedAvatarFile(null);
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      messageApi.error("Vui lòng chọn file ảnh hợp lệ");
+      setSelectedAvatarFile(null);
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      messageApi.error("Ảnh đại diện không được vượt quá 5MB");
+      setSelectedAvatarFile(null);
+      return;
+    }
+
+    setSelectedAvatarFile(file);
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!selectedAvatarFile) {
+      messageApi.warning("Vui lòng chọn ảnh trước khi tải lên");
+      return;
+    }
+
+    const userInfoString = localStorage.getItem("userInfo");
+    const userInfo = userInfoString ? JSON.parse(userInfoString) : null;
+    const token = userInfo?.token;
+
+    const formData = new FormData();
+    formData.append("avatar", selectedAvatarFile);
+
+    const result = await uploadAvatarRequest(
+      `${import.meta.env.VITE_SERVER_URL}/user/me/avatar`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      },
+    );
+
+    if (result?.data) {
+      setProfile(result.data);
+      updateLocalUserInfo(result.data);
+      setSelectedAvatarFile(null);
+      messageApi.success(result.message || "Cập nhật ảnh đại diện thành công");
+    }
   };
 
   const handleUpdateProfile = async (values: {
@@ -406,6 +479,40 @@ const UserProfilePage = () => {
                         title="Cập nhật hồ sơ"
                         className="rounded-lg border border-[var(--border-color)]"
                       >
+                        <div className="mb-5 rounded-lg border border-[var(--border-color)] bg-[var(--surface-2)] p-4">
+                          <Text strong>Ảnh đại diện</Text>
+                          <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-center">
+                            <Avatar size={56} src={avatarUrl} icon={<UserOutlined />} />
+                            <div className="flex-1">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarSelect}
+                                className="block w-full text-sm"
+                              />
+                              <Text type="secondary" className="!text-xs">
+                                Định dạng ảnh: JPG, PNG, WEBP. Dung lượng tối đa 5MB.
+                              </Text>
+                              {selectedAvatarFile && (
+                                <div className="mt-1">
+                                  <Text className="!text-xs" style={{ color: "var(--text-color)" }}>
+                                    Đã chọn: {selectedAvatarFile.name}
+                                  </Text>
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              type="primary"
+                              icon={<CloudUploadOutlined />}
+                              loading={uploadingAvatar}
+                              onClick={handleUploadAvatar}
+                              style={{ backgroundColor: "var(--primary-color)" }}
+                            >
+                              Upload ảnh
+                            </Button>
+                          </div>
+                        </div>
+
                         <Form
                           layout="vertical"
                           form={profileForm}
