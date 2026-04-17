@@ -178,6 +178,19 @@ const routeConfig: RouteObject[] = [
           />
         ),
       },
+      {
+        path: "/profile",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/UserProfilePage"))}
+              />
+            }
+          />
+        ),
+      },
     ],
   },
   {

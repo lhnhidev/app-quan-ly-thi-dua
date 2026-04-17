@@ -5,6 +5,7 @@ import User from '../models/User';
 import generateToken from '../utils/generateToken';
 import Class from '../models/Class';
 import RecordForm from '../models/RecordForm';
+import ResponseModel from '../models/Response';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -601,5 +602,197 @@ export const getUserById = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Lỗi Server' });
+  }
+};
+
+export const getMyProfile = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser?._id) {
+      return res.status(401).json({ message: 'Không xác định được người dùng hiện tại' });
+    }
+
+    const user = await User.findById(currentUser._id)
+      .select('-password')
+      .populate({
+        path: 'followingClasses',
+        select: 'idClass name point teacher',
+      });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    return res.status(200).json(user);
+  } catch (error) {
+    console.error('Get My Profile Error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi lấy thông tin tài khoản' });
+  }
+};
+
+export const updateMyProfile = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser?._id) {
+      return res.status(401).json({ message: 'Không xác định được người dùng hiện tại' });
+    }
+
+    const { firstName, lastName, email } = req.body;
+
+    if (!firstName || !lastName || !email) {
+      return res.status(400).json({ message: 'Vui lòng điền đầy đủ họ tên và email' });
+    }
+
+    const existedEmail = await User.findOne({
+      email,
+      _id: { $ne: currentUser._id },
+    });
+
+    if (existedEmail) {
+      return res.status(409).json({ message: 'Email này đã được sử dụng bởi tài khoản khác' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      currentUser._id,
+      {
+        firstName,
+        lastName,
+        email,
+      },
+      { new: true }
+    )
+      .select('-password')
+      .populate({
+        path: 'followingClasses',
+        select: 'idClass name point teacher',
+      });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    return res.status(200).json({
+      message: 'Cập nhật thông tin tài khoản thành công',
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error('Update My Profile Error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi cập nhật thông tin tài khoản' });
+  }
+};
+
+export const changeMyPassword = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser?._id) {
+      return res.status(401).json({ message: 'Không xác định được người dùng hiện tại' });
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới' });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải có ít nhất 6 ký tự' });
+    }
+
+    const user = await User.findById(currentUser._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    }
+
+    const storedPassword = typeof user.password === 'string' ? user.password : '';
+    const looksLikeBcryptHash = storedPassword.startsWith('$2a$')
+      || storedPassword.startsWith('$2b$')
+      || storedPassword.startsWith('$2y$');
+
+    const isMatched = looksLikeBcryptHash
+      ? await bcrypt.compare(String(currentPassword), storedPassword)
+      : storedPassword === String(currentPassword);
+
+    if (!isMatched) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không chính xác' });
+    }
+
+    user.password = await bcrypt.hash(String(newPassword), 10);
+    await user.save();
+
+    return res.status(200).json({ message: 'Đổi mật khẩu thành công' });
+  } catch (error) {
+    console.error('Change My Password Error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi đổi mật khẩu' });
+  }
+};
+
+export const getMyActivities = async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+
+    if (!currentUser?._id) {
+      return res.status(401).json({ message: 'Không xác định được người dùng hiện tại' });
+    }
+
+    const [recordForms, responses] = await Promise.all([
+      RecordForm.find({ user: currentUser._id })
+        .sort({ createdAt: -1 })
+        .limit(40)
+        .populate('class', 'idClass name')
+        .populate('student', 'idStudent firstName lastName')
+        .populate('rule', 'idRule content point')
+        .lean(),
+      ResponseModel.find({ idUser: currentUser._id })
+        .sort({ createdAt: -1 })
+        .limit(40)
+        .populate('idRecordForm', 'idRecordForm')
+        .lean(),
+    ]);
+
+    const recordActivities = recordForms.map((item: any) => ({
+      id: item._id,
+      type: 'record-form',
+      action: 'Tạo phiếu thi đua',
+      description: `Phiếu ${item.idRecordForm} - lớp ${item.class?.idClass || '-'} - học sinh ${item.student?.idStudent || '-'}`,
+      metadata: {
+        idRecordForm: item.idRecordForm,
+        className: item.class?.name || '-',
+        classId: item.class?.idClass || '-',
+        studentName: `${item.student?.lastName || ''} ${item.student?.firstName || ''}`.trim(),
+        studentId: item.student?.idStudent || '-',
+        ruleContent: item.rule?.content || '-',
+        point: item.rule?.point ?? 0,
+      },
+      createdAt: item.createdAt,
+    }));
+
+    const responseActivities = responses.map((item: any) => ({
+      id: item._id,
+      type: 'response',
+      action: 'Gửi phản hồi',
+      description: `Phản hồi cho phiếu ${item.recordForm || item.idRecordForm?.idRecordForm || '-'}`,
+      metadata: {
+        recordForm: item.recordForm || item.idRecordForm?.idRecordForm || '-',
+        state: item.state || 'chờ xử lý',
+        content: item.content || '',
+      },
+      createdAt: item.createdAt,
+    }));
+
+    const activities = [...recordActivities, ...responseActivities].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return res.status(200).json({
+      total: activities.length,
+      activities: activities.slice(0, 50),
+    });
+  } catch (error) {
+    console.error('Get My Activities Error:', error);
+    return res.status(500).json({ message: 'Lỗi Server khi lấy lịch sử hoạt động' });
   }
 };

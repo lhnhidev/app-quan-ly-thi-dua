@@ -23,6 +23,7 @@ const SidebarContent = () => {
     const path = location.pathname;
 
     // Kiểm tra xem đường dẫn bắt đầu bằng gì để active mục tương ứng
+    if (path.startsWith("/profile")) return "";
     if (path.startsWith("/user")) return "2";
     if (path.startsWith("/assign-classes")) return "3";
     if (path.startsWith("/class")) return "4";
@@ -37,12 +38,14 @@ const SidebarContent = () => {
     return "1";
   };
 
+  const selectedKey = getSelectedKey();
+
   return (
     <Menu
       theme="light"
       mode="inline"
       // 4. Dùng selectedKeys thay vì defaultSelectedKeys
-      selectedKeys={[getSelectedKey()]}
+      selectedKeys={selectedKey ? [selectedKey] : []}
       className="border-r-0"
       items={[
         {

@@ -1,15 +1,53 @@
 // src/components/GoogleClassroomLayout.tsx
 
-import { useEffect, useState } from "react";
-import { Layout, Menu, Button, Typography, Dropdown, Segmented, Tooltip, message } from "antd";
-import { DesktopOutlined, MenuOutlined, MoonOutlined, SunOutlined, UserOutlined } from "@ant-design/icons";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Layout,
+  Button,
+  Typography,
+  Dropdown,
+  Segmented,
+  Tooltip,
+  message,
+  Avatar,
+  Badge,
+  Divider,
+} from "antd";
+import {
+  DesktopOutlined,
+  MenuOutlined,
+  MoonOutlined,
+  SunOutlined,
+  UserOutlined,
+  LogoutOutlined,
+  IdcardOutlined,
+} from "@ant-design/icons";
 import SidebarContent from "../components/SidebarContent";
 import { useNavigate } from "react-router-dom";
 import { useAppContext } from "../context";
 import type { ThemeMode } from "../types/theme";
 
 const { Header, Sider, Content } = Layout;
-const { Title } = Typography;
+const { Title, Text } = Typography;
+
+type RoleType = "admin" | "user" | "student" | "teacher";
+
+interface AccountInfo {
+  _id?: string;
+  idUser?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: RoleType;
+  token?: string;
+}
+
+const roleMeta: Record<RoleType, string> = {
+  admin: "Quản trị viên",
+  user: "Cờ đỏ",
+  teacher: "Giáo viên",
+  student: "Học sinh",
+};
 
 const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
   const [collapsed, setCollapsed] = useState(false);
@@ -17,6 +55,16 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const { themeMode, setThemeMode } = useAppContext();
+  const [account, setAccount] = useState<AccountInfo>(() => {
+    const raw = localStorage.getItem("userInfo");
+    if (!raw) return {};
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -31,24 +79,78 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const accountMenu = (
-    <Menu
-      items={[
-        { key: "1", label: "Thông tin tài khoản" },
-        {
-          key: "2",
-          label: "Đăng xuất",
-          onClick: () => {
-            localStorage.clear();
-            messageApi.success("Đăng xuất thành công!");
-            setTimeout(() => {
-              navigate("/");
-            }, 500);
+  useEffect(() => {
+    const syncProfile = async () => {
+      if (!account?.token) return;
+
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SERVER_URL}/user/me`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${account.token}`,
           },
-        },
-      ]}
-    />
-  );
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const merged = {
+          ...account,
+          ...data,
+          token: account.token,
+        };
+
+        setAccount(merged);
+        localStorage.setItem("userInfo", JSON.stringify(merged));
+      } catch (error) {
+        console.log("Sync profile failed", error);
+      }
+    };
+
+    syncProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fullName = useMemo(() => {
+    const firstName = account?.firstName || "";
+    const lastName = account?.lastName || "";
+    return `${lastName} ${firstName}`.trim() || "Người dùng";
+  }, [account?.firstName, account?.lastName]);
+
+  const roleText = useMemo(() => {
+    if (!account?.role) return "Đang cập nhật";
+    return roleMeta[account.role] || account.role;
+  }, [account?.role]);
+
+  const avatarUrl = useMemo(() => {
+    const text = encodeURIComponent(fullName);
+    return `https://ui-avatars.com/api/?name=${text}&background=1f5ca9&color=fff&size=128`;
+  }, [fullName]);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    messageApi.success("Đăng xuất thành công!");
+    setTimeout(() => {
+      navigate("/");
+    }, 500);
+  };
+
+  const accountMenuItems = [
+    {
+      key: "1",
+      icon: <IdcardOutlined />,
+      label: "Thông tin tài khoản",
+      onClick: () => navigate("/profile"),
+    },
+    {
+      key: "2",
+      icon: <LogoutOutlined />,
+      label: "Đăng xuất",
+      danger: true,
+      onClick: handleLogout,
+    },
+  ];
 
   return (
     <Layout className="min-h-screen">
@@ -138,12 +240,50 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
               />
             </Tooltip>
             <Dropdown
-              overlay={accountMenu}
+              menu={{ items: accountMenuItems }}
+              dropdownRender={(menu) => (
+                <div
+                  className="min-w-[280px] rounded-xl border p-3 shadow-lg"
+                  style={{
+                    backgroundColor: "var(--surface-1)",
+                    borderColor: "var(--border-color)",
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <Badge status="success" offset={[-2, 34]} text="Online" color="#52c41a">
+                      <Avatar size={44} src={avatarUrl} icon={<UserOutlined />} />
+                    </Badge>
+                    <div className="flex-1">
+                      <Text strong style={{ color: "var(--text-color)" }}>
+                        {fullName}
+                      </Text>
+                      <div>
+                        <Text type="secondary">{account.email || "Chưa có email"}</Text>
+                      </div>
+                      <div>
+                        <Text style={{ color: "var(--primary-color)", fontWeight: 600 }}>
+                          {roleText}
+                        </Text>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Divider className="!my-3" />
+                  {menu}
+                </div>
+              )}
               placement="bottomRight"
               trigger={["click"]}
             >
-              <div className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-white" style={{ backgroundColor: "var(--primary-color)" }}>
-                <UserOutlined />
+              <div className="cursor-pointer">
+                <Badge dot status="success" offset={[-1, 30]}>
+                  <Avatar
+                    size={34}
+                    src={avatarUrl}
+                    icon={<UserOutlined />}
+                    style={{ border: "1px solid var(--border-color)" }}
+                  />
+                </Badge>
               </div>
             </Dropdown>
           </div>

@@ -10,6 +10,10 @@ import {
   getTrackingReport,
   trackingRedFlag,
   getUserById,
+  getMyProfile,
+  updateMyProfile,
+  changeMyPassword,
+  getMyActivities,
 } from '../controllers/user.controller';
 import { protect } from '../middlewares/protect';
 
@@ -20,6 +24,10 @@ router.post('/login', loginUser);
 router.use(protect);
 
 router.get('/', getUsers);
+router.get('/me', getMyProfile);
+router.put('/me', updateMyProfile);
+router.patch('/me/password', changeMyPassword);
+router.get('/me/activities', getMyActivities);
 router.post('/getTrackingReport', getTrackingReport);
 router.post('/trackingRedFlag', trackingRedFlag);
 router.get('/test', index);
