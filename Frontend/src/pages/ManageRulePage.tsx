@@ -77,14 +77,14 @@ const ManageRulePage: React.FC = () => {
     const isBonus = rule.type === true;
 
     const color = isBonus ? "text-green-600" : "text-red-600";
-    const bgColor = isBonus ? "bg-green-50" : "bg-red-50";
+    const bgColor = "bg-[var(--surface-2)]";
     const borderColor = isBonus ? "border-green-200" : "border-red-200";
     const Icon = isBonus ? FiCheckCircle : FiAlertCircle;
 
     return (
       <div
         key={rule._id}
-        className={`group relative flex flex-col justify-between rounded-xl border ${borderColor} bg-white p-5`}
+        className={`group relative flex flex-col justify-between rounded-xl border ${borderColor} bg-[var(--surface-1)] p-5`}
       >
         <div className="mb-3 flex items-start justify-between">
           <Tag
@@ -151,7 +151,7 @@ const ManageRulePage: React.FC = () => {
         </div>
 
         <div className="mb-4 flex-1">
-          <h4 className="text-base font-medium leading-snug text-gray-700">
+          <h4 className="text-base font-medium leading-snug text-[var(--text-color)]">
             {rule.content}
           </h4>
         </div>
@@ -163,7 +163,7 @@ const ManageRulePage: React.FC = () => {
             <Icon />
           </div>
           <div className="flex flex-col">
-            <span className="text-xs font-medium uppercase text-gray-500">
+            <span className="text-xs font-medium uppercase text-[var(--text-muted)]">
               {isBonus ? "Điểm thưởng" : "Điểm phạt"}
             </span>
             <span className={`text-xl font-bold ${color}`}>
@@ -207,10 +207,10 @@ const ManageRulePage: React.FC = () => {
       <div className="min-h-screen p-6">
         <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h1 className="m-0 text-2xl font-bold text-gray-800">
+            <h1 className="m-0 text-2xl font-bold text-[var(--text-color)]">
               Danh sách quy định
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
               Hệ thống quy tắc cộng/trừ điểm thi đua
             </p>
           </div>
