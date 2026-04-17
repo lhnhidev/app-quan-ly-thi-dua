@@ -44,7 +44,13 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4">
+    <div
+      className="flex min-h-screen items-center justify-center p-4"
+      style={{
+        background:
+          "linear-gradient(135deg, var(--surface-2) 0%, var(--bg-color) 45%, var(--surface-3) 100%)",
+      }}
+    >
       {contextHolder}
       
       {/* Main Container */}
@@ -56,21 +62,21 @@ const LoginPage: React.FC = () => {
               <span className="text-2xl font-bold text-white">🎓</span>
             </div>
           </div>
-          <Title level={2} className="!mb-2 text-gray-800">
+          <Title level={2} className="!mb-2 !text-[var(--text-color)]">
             Quản lý Thi đua
           </Title>
-          <Text className="text-gray-500">
+          <Text className="!text-[var(--text-muted)]">
             Hệ thống quản lý cuộc thi học sinh trung học
           </Text>
         </div>
 
         {/* Login Form Card */}
-        <div className="rounded-2xl bg-white p-8 shadow-lg backdrop-blur-sm">
+        <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--surface-1)] p-8 shadow-lg backdrop-blur-sm">
           <div className="mb-8">
-            <Title level={4} className="!mb-1 text-gray-800">
+            <Title level={4} className="!mb-1 !text-[var(--text-color)]">
               Chào mừng bạn!
             </Title>
-            <Text className="block text-gray-500">
+            <Text className="block !text-[var(--text-muted)]">
               Đăng nhập bằng email và mật khẩu của bạn
             </Text>
           </div>
@@ -95,7 +101,7 @@ const LoginPage: React.FC = () => {
                   <MailOutlined className="mr-2 text-[var(--primary-color)]" />
                 }
                 placeholder="your@email.com"
-                className="rounded-lg border-gray-200 px-4 py-2"
+                className="rounded-lg border-[var(--border-color)] bg-[var(--surface-2)] px-4 py-2"
               />
             </Form.Item>
 
@@ -110,7 +116,7 @@ const LoginPage: React.FC = () => {
                   <LockOutlined className="mr-2 text-[var(--primary-color)]" />
                 }
                 placeholder="Nhập mật khẩu của bạn"
-                className="rounded-lg border-gray-200 px-4 py-2"
+                className="rounded-lg border-[var(--border-color)] bg-[var(--surface-2)] px-4 py-2"
               />
             </Form.Item>
 
@@ -137,11 +143,11 @@ const LoginPage: React.FC = () => {
             </Button>
 
             {/* Help Section */}
-            <div className="mt-6 border-t border-gray-100 pt-6 text-center">
-              <Text className="block text-sm text-gray-600">
+            <div className="mt-6 border-t border-[var(--border-color)] pt-6 text-center">
+              <Text className="block text-sm !text-[var(--text-color)]">
                 Chưa có tài khoản?
               </Text>
-              <Text className="mt-2 block text-sm text-gray-500">
+              <Text className="mt-2 block text-sm !text-[var(--text-muted)]">
                 Liên hệ với quản trị viên để tạo tài khoản
               </Text>
             </div>
@@ -149,7 +155,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Footer Info */}
-        <div className="mt-8 text-center text-xs text-gray-400">
+        <div className="mt-8 text-center text-xs text-[var(--text-muted)]">
           <p>Dành cho học sinh và giáo viên trung học cơ sở</p>
         </div>
       </div>
