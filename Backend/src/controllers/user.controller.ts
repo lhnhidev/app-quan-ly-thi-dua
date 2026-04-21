@@ -6,9 +6,24 @@ import generateToken from '../utils/generateToken';
 import Class from '../models/Class';
 import RecordForm from '../models/RecordForm';
 import ResponseModel from '../models/Response';
+import Organization from '../models/Organization';
 import { getCloudinary } from '../config/cloudinary';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getActiveOrganizationId = (req: Request) => String(req.headers['x-organization-id'] || '').trim();
+
+const toOrganizationRole = (role: string) => {
+  const normalized = String(role || '').toLowerCase();
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'teacher') return 'teacher';
+  if (normalized === 'student') return 'student';
+  return 'redflag';
+};
+
+const toSystemRole = (orgRole: string) => {
+  return orgRole === 'redflag' ? 'user' : orgRole;
+};
 
 export const index = (req: Request, res: Response) => {
   res.send('User Controller is working!');
@@ -16,8 +31,35 @@ export const index = (req: Request, res: Response) => {
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
-    const users = await User.find({}).select('-password');
-    res.status(200).json(users);
+    const organizationId = getActiveOrganizationId(req);
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const organization = await Organization.findById(organizationId).select('members').lean();
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const approvedMembers = (organization.members || []).filter((member: any) => member.status === 'approved');
+    const memberRoleMap = new Map<string, string>();
+    approvedMembers.forEach((member: any) => {
+      memberRoleMap.set(String(member.user), String(member.role));
+    });
+
+    const memberIds = approvedMembers.map((member: any) => member.user);
+    if (memberIds.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const users = await User.find({ _id: { $in: memberIds } }).select('-password').lean();
+
+    const scopedUsers = users.map((user: any) => ({
+      ...user,
+      role: toSystemRole(memberRoleMap.get(String(user._id)) || String(user.role || 'student')),
+    }));
+
+    res.status(200).json(scopedUsers);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server Error' });
@@ -26,6 +68,28 @@ export const getUsers = async (req: Request, res: Response) => {
 
 export const createUser = async (req: Request, res: Response) => {
   try {
+    const organizationId = getActiveOrganizationId(req);
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const currentUser = (req as any).user;
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const currentMember = (organization.members || []).find(
+      (member: any) =>
+        String(member.user) === String(currentUser?._id) &&
+        member.status === 'approved' &&
+        member.role === 'admin'
+    );
+
+    if (!currentMember) {
+      return res.status(403).json({ message: 'Ban khong co quyen them nguoi dung trong to chuc nay' });
+    }
+
     // 1. Lấy thêm trường followingClasses từ body
     const { firstName, lastName, email, password, role, idUser, followingClasses } = req.body;
 
@@ -66,6 +130,15 @@ export const createUser = async (req: Request, res: Response) => {
     });
 
     await newUser.save();
+
+    const orgRole = toOrganizationRole(role);
+    organization.members.push({
+      user: newUser._id as any,
+      role: orgRole as any,
+      status: 'approved',
+      joinedAt: new Date(),
+    });
+    await organization.save();
 
     // Loại bỏ password trước khi trả về client
     const userObject = newUser.toObject();
@@ -143,11 +216,47 @@ export const deleteUser = async (req: Request, res: Response) => {
   const userId = req.params.id;
 
   try {
-    const deletedUser = await User.findByIdAndDelete(userId);
-    if (!deletedUser) {
-      return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    const organizationId = getActiveOrganizationId(req);
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
     }
-    res.status(200).json({ message: 'Xóa người dùng thành công' });
+
+    const currentUser = (req as any).user;
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const currentMember = (organization.members || []).find(
+      (member: any) =>
+        String(member.user) === String(currentUser?._id) &&
+        member.status === 'approved' &&
+        member.role === 'admin'
+    );
+
+    if (!currentMember) {
+      return res.status(403).json({ message: 'Ban khong co quyen xoa nguoi dung trong to chuc nay' });
+    }
+
+    if (String(organization.owner) === String(userId)) {
+      return res.status(400).json({ message: 'Khong the xoa chu so huu cua to chuc' });
+    }
+
+    const beforeCount = organization.members.length;
+    organization.members = organization.members.filter((member: any) => String(member.user) !== String(userId));
+
+    if (organization.members.length === beforeCount) {
+      return res.status(404).json({ message: 'Nguoi dung khong thuoc to chuc nay' });
+    }
+
+    await organization.save();
+
+    const leftInOrganizations = await Organization.countDocuments({ 'members.user': userId });
+    if (leftInOrganizations === 0) {
+      await User.findByIdAndDelete(userId);
+    }
+
+    res.status(200).json({ message: 'Xoa nguoi dung khoi to chuc thanh cong' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Lỗi Server' });
@@ -161,6 +270,33 @@ export const modifyUser = async (req: Request, res: Response) => {
   const { firstName, lastName, email, role, idUser, password, followingClasses } = req.body;
 
   try {
+    const organizationId = getActiveOrganizationId(req);
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const currentUser = (req as any).user;
+    const organization = await Organization.findById(organizationId);
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const currentMember = (organization.members || []).find(
+      (member: any) =>
+        String(member.user) === String(currentUser?._id) &&
+        member.status === 'approved' &&
+        member.role === 'admin'
+    );
+
+    if (!currentMember) {
+      return res.status(403).json({ message: 'Ban khong co quyen sua nguoi dung trong to chuc nay' });
+    }
+
+    const targetMember = (organization.members || []).find((member: any) => String(member.user) === String(userId));
+    if (!targetMember) {
+      return res.status(404).json({ message: 'Nguoi dung khong thuoc to chuc nay' });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: 'Người dùng không tồn tại' });
@@ -203,6 +339,9 @@ export const modifyUser = async (req: Request, res: Response) => {
     // Dùng .save() để kích hoạt middleware validation và hash password (nếu có đổi pass)
     await user.save();
 
+    targetMember.role = toOrganizationRole(role) as any;
+    await organization.save();
+
     // --- TRẢ VỀ RESPONSE ---
     const userObject = user.toObject();
 
@@ -225,7 +364,25 @@ export const modifyUser = async (req: Request, res: Response) => {
 
 export const getCoDo = async (req: Request, res: Response) => {
   try {
-    const coDoUsers = await User.find({ role: 'user' }).select('-password');
+    const organizationId = getActiveOrganizationId(req);
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const organization = await Organization.findById(organizationId).select('members').lean();
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const memberIds = (organization.members || [])
+      .filter((member: any) => member.status === 'approved' && member.role === 'redflag')
+      .map((member: any) => member.user);
+
+    if (memberIds.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    const coDoUsers = await User.find({ _id: { $in: memberIds } }).select('-password');
     res.status(200).json(coDoUsers);
   } catch (error) {
     console.error(error);
@@ -597,6 +754,24 @@ export const trackingRedFlag = async (req: Request, res: Response) => {
 
 export const getUserById = async (req: Request, res: Response) => {
   try {
+    const organizationId = getActiveOrganizationId(req);
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const organization = await Organization.findById(organizationId).select('members').lean();
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const inOrganization = (organization.members || []).some(
+      (member: any) => String(member.user) === String(req.params.id) && member.status === 'approved'
+    );
+
+    if (!inOrganization) {
+      return res.status(404).json({ message: 'Nguoi dung khong thuoc to chuc nay' });
+    }
+
     const user = await User.findById(req.params.id)
       .select('-password')
       .populate('followingClasses');
