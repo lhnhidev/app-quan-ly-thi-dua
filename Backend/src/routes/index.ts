@@ -10,6 +10,8 @@ import assignClassesRoutes from './assignClasses.routes';
 import responseRoutes from './response.routes';
 import chatbotRoutes from './chatbot.routes';
 import socialRoutes from './social.routes';
+import authRoutes from './auth.routes';
+import organizationRoutes from './organization.routes';
 
 const router = (app: Application): void => {
   app.use('/user', userRoutes);
@@ -23,6 +25,8 @@ const router = (app: Application): void => {
   app.use('/response', responseRoutes);
   app.use('/chat', chatbotRoutes);
   app.use('/social', socialRoutes);
+  app.use('/auth', authRoutes);
+  app.use('/organizations', organizationRoutes);
 };
 
 export default router;

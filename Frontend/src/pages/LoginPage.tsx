@@ -29,13 +29,7 @@ const LoginPage: React.FC = () => {
     if (data?.token) {
       localStorage.setItem("userInfo", JSON.stringify(data));
       messageApi.success("Đăng nhập thành công!");
-      if (data.role === "admin") {
-        navigate("/dashboard");
-      } else if (data.role === "teacher" || data.role === "student") {
-        navigate("/home-1");
-      } else if (data.role === "user") {
-        navigate("/home-2");
-      }
+      navigate("/home");
     } else {
       messageApi.error(
         data?.message || error || "Đăng nhập thất bại. Vui lòng thử lại.",
@@ -147,9 +141,9 @@ const LoginPage: React.FC = () => {
               <Text className="block text-sm !text-[var(--text-color)]">
                 Chưa có tài khoản?
               </Text>
-              <Text className="mt-2 block text-sm !text-[var(--text-muted)]">
-                Liên hệ với quản trị viên để tạo tài khoản
-              </Text>
+              <Button type="link" className="mt-1" onClick={() => navigate("/register")}>
+                Đăng ký tài khoản mới
+              </Button>
             </div>
           </Form>
         </div>

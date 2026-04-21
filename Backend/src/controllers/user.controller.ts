@@ -115,6 +115,10 @@ export const loginUser = async (req: Request, res: Response) => {
     }
 
     if (user && isValidPassword) {
+      if (user.isEmailVerified === false) {
+        return res.status(403).json({ message: 'Tai khoan chua xac thuc email' });
+      }
+
       // Đăng nhập thành công, tạo JWT và gửi về client
       res.json({
         _id: user._id,
