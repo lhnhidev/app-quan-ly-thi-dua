@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Tabs, Button } from "antd";
 import { FaClipboardCheck, FaHome } from "react-icons/fa"; // Import icon từ react-icons
-import { TeamOutlined } from "@ant-design/icons";
+import { HomeOutlined, TeamOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
 import HomeRedFlagPage from "./HomeRedFlagPage";
@@ -61,6 +61,7 @@ const RedFlagPage: React.FC = () => {
             <Button icon={<TeamOutlined />} onClick={() => navigate("/social-user")}>
               Mạng xã hội nội bộ
             </Button>
+            <Button icon={<HomeOutlined />} onClick={() => navigate("/home")}>Trang chủ</Button>
           </div>
         </div>
 

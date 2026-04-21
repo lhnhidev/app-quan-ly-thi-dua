@@ -13,6 +13,7 @@ export type UserType = {
   avatarPublicId?: string;
   isOnline?: boolean;
   lastSeenAt?: Date;
+  isEmailVerified?: boolean;
 };
 
 const UserSchema: Schema = new Schema(
@@ -40,6 +41,7 @@ const UserSchema: Schema = new Schema(
     avatarPublicId: { type: String, default: '' },
     isOnline: { type: Boolean, default: false },
     lastSeenAt: { type: Date, default: null },
+    isEmailVerified: { type: Boolean, default: true },
   },
   {
     timestamps: true,

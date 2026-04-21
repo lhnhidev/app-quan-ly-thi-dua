@@ -26,10 +26,10 @@ const Loadable = (props: {
 };
 
 const SocialEntryRedirect = () => {
-  const raw = localStorage.getItem("userInfo");
+  const raw = localStorage.getItem("activeOrganization");
 
   if (!raw) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   try {
@@ -37,15 +37,15 @@ const SocialEntryRedirect = () => {
     const role = parsed?.role;
     return <Navigate to={role === "admin" ? "/social-admin" : "/social-user"} replace />;
   } catch {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 };
 
 const AdminSocialGuard = () => {
-  const raw = localStorage.getItem("userInfo");
+  const raw = localStorage.getItem("activeOrganization");
 
   if (!raw) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   try {
@@ -60,7 +60,7 @@ const AdminSocialGuard = () => {
       />
     );
   } catch {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/home" replace />;
   }
 };
 
@@ -70,8 +70,16 @@ const routeConfig: RouteObject[] = [
     element: <Loadable Component={lazy(() => import("../pages/LoginPage"))} />,
   },
   {
+    path: "/register",
+    element: <Loadable Component={lazy(() => import("../pages/RegisterPage"))} />,
+  },
+  {
     element: <ProtectedRoute />,
     children: [
+      {
+        path: "/home",
+        element: <Loadable Component={lazy(() => import("../pages/OrganizationHomePage"))} />,
+      },
       {
         path: "/dashboard",
         element: (
@@ -244,19 +252,19 @@ const routeConfig: RouteObject[] = [
           <Loadable Component={lazy(() => import("../pages/SocialUserPage"))} />
         ),
       },
+      {
+        path: "/home-1",
+        element: (
+          <Loadable Component={lazy(() => import("../pages/TrackingReportPage"))} />
+        ),
+      },
+      {
+        path: "/home-2",
+        element: (
+          <Loadable Component={lazy(() => import("../pages/RedFlagPage"))} />
+        ),
+      },
     ],
-  },
-  {
-    path: "/home-1",
-    element: (
-      <Loadable Component={lazy(() => import("../pages/TrackingReportPage"))} />
-    ),
-  },
-  {
-    path: "/home-2",
-    element: (
-      <Loadable Component={lazy(() => import("../pages/RedFlagPage"))} />
-    ),
   },
   {
     path: "*",

@@ -16,6 +16,7 @@ import {
   Modal,
 } from "antd";
 import {
+  HomeOutlined,
   SearchOutlined,
   UserOutlined,
   TrophyOutlined,
@@ -336,6 +337,9 @@ const TrackingReportPage: React.FC = () => {
             onClick={() => navigate("/social-user")}
           >
             Mạng xã hội nội bộ
+          </Button>
+          <Button icon={<HomeOutlined />} size="large" onClick={() => navigate("/home")}>
+            Trang chủ
           </Button>
         </div>
       </Card>

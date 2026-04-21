@@ -77,7 +77,7 @@ const ProtectedRoute: React.FC = () => {
       </div>
     );
 
-  return ok ? <Outlet /> : <Navigate to="/not-found" replace />;
+  return ok ? <Outlet /> : <Navigate to="/" replace />;
 };
 
 export default ProtectedRoute;

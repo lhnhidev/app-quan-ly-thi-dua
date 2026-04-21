@@ -15,6 +15,7 @@ import {
 } from "antd";
 import {
   DesktopOutlined,
+  HomeOutlined,
   MenuOutlined,
   MoonOutlined,
   SunOutlined,
@@ -256,6 +257,14 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
 
           <div className="mr-4 flex items-center space-x-2">
+            <Tooltip title="Trang chủ tổ chức">
+              <Button
+                type="text"
+                icon={<HomeOutlined />}
+                onClick={() => navigate("/home")}
+                style={{ color: "var(--text-muted)" }}
+              />
+            </Tooltip>
             <Tooltip title="Che do giao dien">
               <Segmented
                 size="small"
