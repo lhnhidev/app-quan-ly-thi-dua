@@ -1,12 +1,13 @@
 import mongoose, { Schema } from 'mongoose';
 
-export type ResponseTpe = {
+export type ResponseType = {
   idRecordForm: mongoose.Types.ObjectId;
   idUser: string;
   firstName: string;
   lastName: string;
   email: string;
   content: string;
+  organization?: mongoose.Types.ObjectId;
 };
 
 const ResponseSchema: Schema = new Schema(
@@ -53,6 +54,12 @@ const ResponseSchema: Schema = new Schema(
     responseOfAdmin: {
       type: String,
       default: '',
+    },
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: false,
+      index: true,
     },
   },
   {

@@ -6,6 +6,7 @@ export type StudentType = {
   idStudent: string;
   class: mongoose.Schema.Types.ObjectId;
   recordForms: mongoose.Schema.Types.ObjectId[];
+  organization?: mongoose.Types.ObjectId;
 };
 
 const studentSchema: Schema = new Schema(
@@ -21,7 +22,6 @@ const studentSchema: Schema = new Schema(
     idStudent: {
       type: String,
       required: true,
-      unique: true,
     },
     class: {
       type: Schema.Types.ObjectId || null || undefined,
@@ -34,11 +34,19 @@ const studentSchema: Schema = new Schema(
         ref: 'RecordForm',
       },
     ],
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+studentSchema.index({ organization: 1, idStudent: 1 }, { unique: true });
 
 const Student = mongoose.model<StudentType>('Student', studentSchema, 'Student');
 

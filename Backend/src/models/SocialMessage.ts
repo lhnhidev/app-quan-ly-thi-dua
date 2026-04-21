@@ -23,6 +23,7 @@ export type SocialMessageType = {
   recallUndoAvailable: boolean;
   recalledBackupText?: string;
   recalledBackupAttachments: MessageAttachment[];
+  organization?: mongoose.Types.ObjectId;
 };
 
 const AttachmentSchema = new Schema<MessageAttachment>(
@@ -96,6 +97,12 @@ const SocialMessageSchema = new Schema<SocialMessageType>(
     recalledBackupAttachments: {
       type: [AttachmentSchema],
       default: [],
+    },
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: false,
+      index: true,
     },
   },
   { timestamps: true }

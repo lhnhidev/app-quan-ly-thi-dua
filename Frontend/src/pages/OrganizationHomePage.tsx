@@ -20,6 +20,7 @@ import {
   LogoutOutlined,
   PlusOutlined,
   TeamOutlined,
+  UserOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 
@@ -80,6 +81,33 @@ const OrganizationHomePage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createForm] = Form.useForm();
+
+  const userInfo = useMemo(() => {
+    const raw = localStorage.getItem("userInfo");
+    if (!raw) {
+      return {
+        fullName: "Người dùng",
+        email: "",
+        avatarUrl: "",
+      };
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      const fullName = `${parsed?.lastName || ""} ${parsed?.firstName || ""}`.trim() || "Người dùng";
+      return {
+        fullName,
+        email: parsed?.email || "",
+        avatarUrl: parsed?.avatarUrl || parsed?.avatar || "",
+      };
+    } catch {
+      return {
+        fullName: "Người dùng",
+        email: "",
+        avatarUrl: "",
+      };
+    }
+  }, []);
 
   const token = useMemo(() => {
     const raw = localStorage.getItem("userInfo");
@@ -222,17 +250,27 @@ const OrganizationHomePage: React.FC = () => {
       {contextHolder}
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--surface-1)] p-4 md:flex-row md:items-center md:justify-between">
-          <Space align="center">
-            <Avatar size={48} icon={<HomeOutlined />} style={{ backgroundColor: "var(--primary-color)" }} />
-            <div>
-              <Title level={4} className="!mb-0 !text-[var(--text-color)]">
-                Trang chủ tổ chức
-              </Title>
-              <Text className="!text-[var(--text-muted)]">
-                Chọn tổ chức để vào không gian làm việc tương ứng theo quyền của bạn
-              </Text>
-            </div>
-          </Space>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <Space align="center">
+              <Avatar size={48} icon={<HomeOutlined />} style={{ backgroundColor: "var(--primary-color)" }} />
+              <div>
+                <Title level={4} className="!mb-0 !text-[var(--text-color)]">
+                  Trang chủ tổ chức
+                </Title>
+                <Text className="!text-[var(--text-muted)]">
+                  Chọn tổ chức để vào không gian làm việc tương ứng theo quyền của bạn
+                </Text>
+              </div>
+            </Space>
+
+            <Space align="center" className="rounded-xl border border-[var(--border-color)] px-3 py-2">
+              <Avatar src={userInfo.avatarUrl} icon={<UserOutlined />} />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold text-[var(--text-color)]">{userInfo.fullName}</div>
+                <div className="truncate text-xs text-[var(--text-muted)]">{userInfo.email}</div>
+              </div>
+            </Space>
+          </div>
 
           <Space>
             <Button icon={<PlusOutlined />} type="primary" onClick={() => setIsCreateModalOpen(true)}>
