@@ -33,17 +33,19 @@ app.use((req, _res, next) => {
 router(app);
 initializeSocket(httpServer);
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
+
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 const startServer = async () => {
-  await connectDB();
-  await bootstrapLegacyOrganization();
-
-  httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  try {
+    await connectDB();
+    await bootstrapLegacyOrganization();
+  } catch (error) {
+    console.error('Start server error:', error);
+  }
 };
 
-startServer().catch((error) => {
-  console.error('Start server error:', error);
-});
+void startServer();
