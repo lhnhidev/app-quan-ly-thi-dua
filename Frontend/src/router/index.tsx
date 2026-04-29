@@ -120,6 +120,19 @@ const routeConfig: RouteObject[] = [
         ),
       },
       {
+        path: "/organization-approvals",
+        element: (
+          <Loadable
+            Component={lazy(() => import("../layouts/DefaultLayout"))}
+            children={
+              <Loadable
+                Component={lazy(() => import("../pages/ManageJoinApprovalPage"))}
+              />
+            }
+          />
+        ),
+      },
+      {
         path: "/class",
         element: (
           <Loadable

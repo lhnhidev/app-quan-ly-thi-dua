@@ -9,6 +9,7 @@ import {
   Segmented,
   Tooltip,
   message,
+  notification,
   Avatar,
   Badge,
   Divider,
@@ -57,6 +58,7 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
+  const [notificationApi, notificationContextHolder] = notification.useNotification();
   const { themeMode, setThemeMode } = useAppContext();
   const [account, setAccount] = useState<AccountInfo>(() => {
     const raw = localStorage.getItem("userInfo");
@@ -134,6 +136,46 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!account?.token) return;
+
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SERVER_URL}/notifications/my`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${account.token}`,
+          },
+        });
+
+        if (!res.ok) return;
+        const data = await res.json().catch(() => []);
+        if (!Array.isArray(data) || data.length === 0) return;
+
+        data.forEach((item) => {
+          notificationApi.open({
+            message: "Thông báo",
+            description: item.message || "Bạn có thông báo mới",
+            placement: "bottomRight",
+          });
+        });
+
+        await fetch(`${import.meta.env.VITE_SERVER_URL}/notifications/mark-read`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${account.token}`,
+          },
+        });
+      } catch (error) {
+        console.log("Fetch notifications failed", error);
+      }
+    };
+
+    fetchNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account?.token]);
+
   const fullName = useMemo(() => {
     const firstName = account?.firstName || "";
     const lastName = account?.lastName || "";
@@ -185,6 +227,7 @@ const DefaultLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <Layout className="min-h-screen">
       {contextHolder}
+      {notificationContextHolder}
       <Sider
         width={280}
         collapsedWidth={isMobile ? 0 : 70}

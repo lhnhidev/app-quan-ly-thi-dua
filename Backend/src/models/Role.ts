@@ -1,10 +1,12 @@
 import { Schema, model } from 'mongoose';
+import mongoose from 'mongoose';
 
 export type RoleType = {
   idRule: string;
   content: string;
   point: number;
   type: boolean;
+  organization?: mongoose.Types.ObjectId;
 };
 
 const RoleSchema: Schema = new Schema(
@@ -12,7 +14,6 @@ const RoleSchema: Schema = new Schema(
     idRule: {
       type: String,
       required: true,
-      unique: true,
     },
     content: {
       type: String,
@@ -26,10 +27,18 @@ const RoleSchema: Schema = new Schema(
       type: Boolean,
       required: true,
     },
+    organization: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+RoleSchema.index({ organization: 1, idRule: 1 }, { unique: true });
 
 export default model<RoleType>('Role', RoleSchema, 'Role');

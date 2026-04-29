@@ -12,6 +12,7 @@ import chatbotRoutes from './chatbot.routes';
 import socialRoutes from './social.routes';
 import authRoutes from './auth.routes';
 import organizationRoutes from './organization.routes';
+import notificationRoutes from './notification.routes';
 
 const router = (app: Application): void => {
   app.use('/user', userRoutes);
@@ -27,6 +28,7 @@ const router = (app: Application): void => {
   app.use('/social', socialRoutes);
   app.use('/auth', authRoutes);
   app.use('/organizations', organizationRoutes);
+  app.use('/notifications', notificationRoutes);
 };
 
 export default router;

@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 import dns from 'node:dns';
+import { tenantPlugin } from './tenantPlugin';
+
+mongoose.plugin(tenantPlugin);
 
 const applyCustomDnsServers = () => {
   const rawServers = process.env.DNS_SERVERS;
