@@ -5,6 +5,7 @@ import User from '../models/User';
 import Student from '../models/Student';
 import Teacher from '../models/Teacher';
 import SocialMessage from '../models/SocialMessage';
+import Organization from '../models/Organization';
 import { getCloudinary } from '../config/cloudinary';
 import { emitToUser } from '../config/socket';
 
@@ -72,11 +73,23 @@ const ensureAvatar = (user: any) => {
 export const getSocialUsers = async (req: Request, res: Response) => {
   try {
     const currentUser = (req as any).user;
+    const organizationId = String((req as any).organizationId || '').trim();
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const organization = await Organization.findById(organizationId).select('members').lean();
+    if (!organization) {
+      return res.status(404).json({ message: 'Khong tim thay to chuc' });
+    }
+
+    const approvedMembers = (organization.members || []).filter((member: any) => member.status === 'approved');
+    const memberIds = approvedMembers.map((member: any) => String(member.user));
     const q = normalize(String(req.query.q || ''));
     const currentUserObjectId = new mongoose.Types.ObjectId(String(currentUser._id));
 
     const [users, students, teachers, conversationSnapshots] = await Promise.all([
-      User.find({ _id: { $ne: currentUser._id } })
+      User.find({ _id: { $in: memberIds.filter((id) => id !== String(currentUser._id)) } })
         .select('firstName lastName email role idUser avatar avatarUrl isOnline lastSeenAt')
         .lean(),
       Student.find({}).populate('class', 'name').lean(),
@@ -188,10 +201,31 @@ export const getSocialUsers = async (req: Request, res: Response) => {
 export const getMessagesByPeer = async (req: Request, res: Response) => {
   try {
     const currentUser = (req as any).user;
+    const organizationId = String((req as any).organizationId || '').trim();
     const peerId = String(req.params.peerId || '');
 
     if (!peerId) {
       return res.status(400).json({ message: 'Thiếu peerId' });
+    }
+
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const organization = await Organization.findOne({
+      _id: organizationId,
+      members: {
+        $all: [
+          { $elemMatch: { user: currentUser._id, status: 'approved' } },
+          { $elemMatch: { user: peerId, status: 'approved' } },
+        ],
+      },
+    })
+      .select('_id')
+      .lean();
+
+    if (!organization) {
+      return res.status(403).json({ message: 'Ban khong co quyen xem tin nhan voi nguoi nay' });
     }
 
     const unreadIncoming = await SocialMessage.find({
@@ -216,7 +250,7 @@ export const getMessagesByPeer = async (req: Request, res: Response) => {
         }
       );
 
-      emitToUser(String(peerId), 'social:message-status', {
+      emitToUser(organizationId, String(peerId), 'social:message-status', {
         fromUserId: String(currentUser._id),
         status: 'read',
         messageIds: unreadIds.map((id: any) => String(id)),
@@ -289,6 +323,7 @@ const uploadFilesToCloudinary = async (files: Express.Multer.File[]) => {
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const currentUser = (req as any).user;
+    const organizationId = String((req as any).organizationId || '').trim();
     const toUserId = String(req.body.toUserId || '').trim();
     const text = String(req.body.text || '').trim();
 
@@ -298,6 +333,26 @@ export const sendMessage = async (req: Request, res: Response) => {
 
     if (toUserId === String(currentUser._id)) {
       return res.status(400).json({ message: 'Không thể tự gửi tin nhắn cho chính mình' });
+    }
+
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
+    }
+
+    const organization = await Organization.findOne({
+      _id: organizationId,
+      members: {
+        $all: [
+          { $elemMatch: { user: currentUser._id, status: 'approved' } },
+          { $elemMatch: { user: toUserId, status: 'approved' } },
+        ],
+      },
+    })
+      .select('_id')
+      .lean();
+
+    if (!organization) {
+      return res.status(403).json({ message: 'Ban khong co quyen gui tin nhan cho nguoi nay' });
     }
 
     const receiver = await User.findById(toUserId).select('_id isOnline');
@@ -329,6 +384,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       recallUndoAvailable: false,
       recalledBackupText: '',
       recalledBackupAttachments: [],
+      organization: organizationId,
     });
 
     const populated = await SocialMessage.findById(message._id)
@@ -336,11 +392,11 @@ export const sendMessage = async (req: Request, res: Response) => {
       .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
       .lean();
 
-    emitToUser(String(toUserId), 'social:message', populated);
-    emitToUser(String(currentUser._id), 'social:message', populated);
+    emitToUser(organizationId, String(toUserId), 'social:message', populated);
+    emitToUser(organizationId, String(currentUser._id), 'social:message', populated);
 
     if (deliveredNow) {
-      emitToUser(String(currentUser._id), 'social:message-status', {
+      emitToUser(organizationId, String(currentUser._id), 'social:message-status', {
         fromUserId: String(toUserId),
         status: 'delivered',
         messageIds: [String(message._id)],
@@ -358,10 +414,15 @@ export const sendMessage = async (req: Request, res: Response) => {
 export const recallMessage = async (req: Request, res: Response) => {
   try {
     const currentUser = (req as any).user;
+    const organizationId = String((req as any).organizationId || '').trim();
     const messageId = String(req.params.messageId || '').trim();
 
     if (!messageId) {
       return res.status(400).json({ message: 'Thiếu messageId' });
+    }
+
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
     }
 
     const message = await SocialMessage.findById(messageId);
@@ -400,8 +461,8 @@ export const recallMessage = async (req: Request, res: Response) => {
       .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
       .lean();
 
-    emitToUser(String(message.sender), 'social:message-recalled', populated);
-    emitToUser(String(message.receiver), 'social:message-recalled', populated);
+    emitToUser(organizationId, String(message.sender), 'social:message-recalled', populated);
+    emitToUser(organizationId, String(message.receiver), 'social:message-recalled', populated);
 
     return res.status(200).json(populated);
   } catch (error) {
@@ -413,10 +474,15 @@ export const recallMessage = async (req: Request, res: Response) => {
 export const undoRecallMessage = async (req: Request, res: Response) => {
   try {
     const currentUser = (req as any).user;
+    const organizationId = String((req as any).organizationId || '').trim();
     const messageId = String(req.params.messageId || '').trim();
 
     if (!messageId) {
       return res.status(400).json({ message: 'Thiếu messageId' });
+    }
+
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Thieu X-Organization-Id' });
     }
 
     const message = await SocialMessage.findById(messageId);
@@ -457,8 +523,8 @@ export const undoRecallMessage = async (req: Request, res: Response) => {
       .populate('receiver', 'firstName lastName email avatar avatarUrl role idUser')
       .lean();
 
-    emitToUser(String(message.sender), 'social:message-unrecalled', populated);
-    emitToUser(String(message.receiver), 'social:message-unrecalled', populated);
+    emitToUser(organizationId, String(message.sender), 'social:message-unrecalled', populated);
+    emitToUser(organizationId, String(message.receiver), 'social:message-unrecalled', populated);
 
     return res.status(200).json(populated);
   } catch (error) {

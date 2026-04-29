@@ -373,6 +373,17 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
     }
   }, []);
 
+  const activeOrganizationId = useMemo(() => {
+    const raw = localStorage.getItem("activeOrganization");
+    if (!raw) return "";
+
+    try {
+      return JSON.parse(raw)?.organizationId || "";
+    } catch {
+      return "";
+    }
+  }, []);
+
   const attachStreamToVideo = async (
     elementRef: { current: HTMLVideoElement | null },
     stream: MediaStream | null,
@@ -838,12 +849,13 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
   }, [undoCountdownMap]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !activeOrganizationId) return;
 
     const socket = io(import.meta.env.VITE_SERVER_URL, {
       transports: ["websocket"],
       auth: {
         token,
+        organizationId: activeOrganizationId,
       },
     });
 
@@ -1079,7 +1091,7 @@ const SocialPage = ({ mode = "admin" }: SocialPageProps) => {
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, activeOrganizationId]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });

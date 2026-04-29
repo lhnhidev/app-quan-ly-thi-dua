@@ -12,6 +12,7 @@ import {
   MessageOutlined,
   WechatOutlined,
   SettingOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom"; // 1. Import useLocation
 
@@ -26,6 +27,7 @@ const SidebarContent = () => {
     // Kiểm tra xem đường dẫn bắt đầu bằng gì để active mục tương ứng
     if (path.startsWith("/profile")) return "";
     if (path.startsWith("/user")) return "2";
+    if (path.startsWith("/organization-approvals")) return "2a";
     if (path.startsWith("/assign-classes")) return "3";
     if (path.startsWith("/class")) return "4";
     if (path.startsWith("/student")) return "5";
@@ -63,6 +65,13 @@ const SidebarContent = () => {
           label: "Quản lý người dùng",
           className: "rounded-r-full my-1.5 h-12 flex items-center",
           onClick: () => navigate("/user"),
+        },
+        {
+          key: "2a",
+          icon: <CheckCircleOutlined />,
+          label: "Phê duyệt tham gia",
+          className: "rounded-r-full my-1.5 h-12 flex items-center",
+          onClick: () => navigate("/organization-approvals"),
         },
         {
           key: "3",

@@ -8,6 +8,8 @@ export type OrganizationMember = {
   role: OrganizationRole;
   status: OrganizationMemberStatus;
   joinedAt?: Date;
+  requestMessage?: string;
+  requestedAt?: Date;
 };
 
 export type OrganizationType = {
@@ -19,6 +21,7 @@ export type OrganizationType = {
   contactEmail?: string;
   contactPhone?: string;
   allowJoinByInviteWithoutApproval: boolean;
+  defaultJoinRole?: OrganizationRole;
   inviteCode: string;
   owner: mongoose.Types.ObjectId;
   members: OrganizationMember[];
@@ -40,6 +43,8 @@ const MemberSchema = new Schema<OrganizationMember>(
       default: 'pending',
     },
     joinedAt: { type: Date, default: null },
+    requestMessage: { type: String, default: '', trim: true },
+    requestedAt: { type: Date, default: null },
   },
   { _id: false }
 );
@@ -54,6 +59,11 @@ const OrganizationSchema: Schema = new Schema(
     contactEmail: { type: String, default: '', trim: true },
     contactPhone: { type: String, default: '', trim: true },
     allowJoinByInviteWithoutApproval: { type: Boolean, default: true },
+    defaultJoinRole: {
+      type: String,
+      enum: ['admin', 'teacher', 'student', 'redflag'],
+      default: 'student',
+    },
     inviteCode: { type: String, required: true, unique: true, trim: true },
     owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     members: { type: [MemberSchema], default: [] },
