@@ -33,7 +33,7 @@ app.use((req, _res, next) => {
 router(app);
 initializeSocket(httpServer);
 
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 const startServer = async () => {
   await connectDB();
