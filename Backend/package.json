@@ -4,7 +4,6 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prestart": "npm run build",
     "start": "node dist/app.js",
     "dev": "nodemon --watch 'src/**/*.ts' --exec \"node --inspect -r ts-node/register\" src/app.ts",
     "build": "tsc",
